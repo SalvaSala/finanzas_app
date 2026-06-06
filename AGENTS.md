@@ -15,7 +15,7 @@ App de **finanzas personales** para registrar ingresos/gastos y analizarlos en u
 
 **Backend (Python):** FastAPI · SQLModel (SQLAlchemy + Pydantic) · SQLite (→ PostgreSQL en nube) · Alembic · Uvicorn · pytest · ruff + black + mypy · uv.
 
-**Frontend (TypeScript):** Vite · React · TailwindCSS · shadcn/ui · Recharts (gráficos estándar) + Nivo/visx (treemap, heatmap, Sankey) · TanStack Query · TanStack Table · React Hook Form + Zod.
+**Frontend (TypeScript):** Vite · React · TailwindCSS v4 (config CSS-first, sin `tailwind.config.js`; plugin `@tailwindcss/vite`) · shadcn/ui · Recharts (gráficos estándar) + Nivo/visx (treemap, heatmap, Sankey) · TanStack Query · TanStack Table · React Hook Form + Zod.
 
 **Comunicación:** API REST bajo `/api`. Tipos del frontend generados desde el esquema **OpenAPI** de FastAPI (`openapi-typescript`).
 

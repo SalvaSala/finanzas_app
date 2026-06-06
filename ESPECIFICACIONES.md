@@ -40,7 +40,7 @@ Arquitectura **frontend / backend separados**, comunicándose por una **API REST
 | Build / dev server | **Vite** | Arranque y recarga muy rápidos. |
 | Lenguaje | **TypeScript** | Tipado fuerte, menos errores. |
 | Librería UI | **React** | Ecosistema enorme; Claude Code lo genera muy bien. |
-| Estilos | **TailwindCSS** | Estilado rápido y consistente. |
+| Estilos | **TailwindCSS v4** (config CSS-first, plugin `@tailwindcss/vite`) | Estilado rápido y consistente. |
 | Componentes | **shadcn/ui** (Radix + Tailwind) | Componentes accesibles y con muy buen aspecto. |
 | Gráficos | **Recharts** (estándar) + **Nivo**/**visx** (avanzados: treemap, heatmap, Sankey) | Cubre todos los gráficos del dashboard. |
 | Estado servidor | **TanStack Query (React Query)** | Caché, recarga y sincronización de datos de la API. |
@@ -79,13 +79,14 @@ finapp/
 │   └── tests/
 ├── frontend/
 │   ├── package.json
-│   ├── vite.config.ts
-│   ├── tailwind.config.js
+│   ├── vite.config.ts        # incluye el plugin @tailwindcss/vite (Tailwind v4)
+│   ├── components.json       # configuración de shadcn/ui
 │   ├── tsconfig.json
 │   ├── index.html
 │   └── src/
 │       ├── main.tsx
 │       ├── App.tsx
+│       ├── index.css         # config CSS-first de Tailwind v4 (@import "tailwindcss")
 │       ├── api/              # cliente HTTP + tipos generados de OpenAPI
 │       ├── hooks/            # hooks de React Query (useTransactions, useKpis...)
 │       ├── components/
