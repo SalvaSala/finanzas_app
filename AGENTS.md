@@ -99,6 +99,7 @@ para no refactorizar después (detalle en `packaging/README.md`):
 - Regenerar los tipos TS del frontend (`npm run gen:api`) cuando cambie la API.
 - Crear migración Alembic cuando cambie el modelo de datos.
 - Tras actualizar dependencias, regenerar el instalable y probarlo (no solo el modo desarrollo).
+- Commitear directamente en main (proyecto monousuario; se revisará cuando haya colaboradores).
 
 **Preguntar antes de:**
 - Añadir dependencias pesadas o cambiar piezas del stack.
