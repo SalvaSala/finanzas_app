@@ -28,6 +28,8 @@ package = false
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Las migraciones de Alembic son autogeneradas: no las lintamos.
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -42,6 +44,8 @@ disallow_untyped_defs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 plugins = ["pydantic.mypy"]
+# Las migraciones autogeneradas de Alembic no se comprueban con tipos.
+exclude = ['alembic/versions/']
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

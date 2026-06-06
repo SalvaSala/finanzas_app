@@ -46,5 +46,17 @@ def get_data_dir() -> str:
 
 
 def get_database_path() -> str:
-    """Return the absolute path to the local SQLite database file."""
+    """Return the absolute path to the local SQLite database file (packaged app)."""
     return str(Path(get_data_dir()) / DB_FILENAME)
+
+
+def get_dev_database_path() -> str:
+    """Return the SQLite database path used in development (repo ``data/`` dir).
+
+    Resolved relative to this file so it does not depend on the current working
+    directory. The packaged app uses :func:`get_database_path` instead.
+    """
+    repo_root = Path(__file__).resolve().parents[3]
+    data_dir = repo_root / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return str(data_dir / DB_FILENAME)

@@ -4,19 +4,32 @@ In development the app only exposes the REST API under ``/api`` (the frontend ru
 on the Vite dev server and proxies ``/api`` here). In production / packaged builds,
 the compiled frontend (``frontend/dist``) is served as static files from the same
 process, so there is a single origin and no CORS. See ``packaging/README.md``.
+
+On startup, Alembic migrations are applied so the local database is created/updated
+automatically on first run.
 """
 
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.api import api_router
+from app.core.db import run_migrations
 from app.core.paths import resource_path
 
-app = FastAPI(title="FinApp", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    run_migrations()
+    yield
+
+
+app = FastAPI(title="FinApp", version="0.1.0", lifespan=lifespan)
 
 app.include_router(api_router)
 
