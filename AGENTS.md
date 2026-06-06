@@ -23,15 +23,18 @@ App de **finanzas personales** para registrar ingresos/gastos y analizarlos en u
 
 ## Herramientas MCP
 
-El proyecto tiene instalado el servidor **MCP Context7** a nivel de usuario.
+El proyecto tiene instalados tres servidores MCP a nivel de usuario:
 
-Al trabajar con cualquier librería del stack (FastAPI, SQLModel, Alembic, React,
-Tailwind, shadcn/ui, Recharts, TanStack Query, TanStack Table, React Hook Form, Zod),
-añade **`use context7`** para consultar la documentación actualizada en lugar de
-basarte en los datos de entrenamiento.
-
-Esto es **especialmente importante en Tailwind v4 y shadcn/ui**, donde la sintaxis
-cambia respecto a versiones anteriores.
+- **Context7** — documentación actualizada de librerías. Añade **`use context7`** al
+  trabajar con cualquier librería del stack (FastAPI, SQLModel, Alembic, React,
+  Tailwind, shadcn/ui, Recharts, TanStack Query, TanStack Table, React Hook Form, Zod)
+  para consultar la documentación al día en lugar de basarte en los datos de
+  entrenamiento. Especialmente importante en **Tailwind v4 y shadcn/ui**, donde la
+  sintaxis cambia respecto a versiones anteriores.
+- **GitHub** — gestión del repositorio (issues, PRs, búsqueda de código). Úsalo cuando
+  necesites interactuar con el repo desde el agente.
+- **Playwright** — pruebas visuales del frontend. Úsalo para verificar que las
+  pantallas se ven y se comportan correctamente abriendo un navegador real.
 
 ## Comandos
 
