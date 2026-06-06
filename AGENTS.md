@@ -21,6 +21,18 @@ App de **finanzas personales** para registrar ingresos/gastos y analizarlos en u
 
 **Empaquetado local:** `vite build` → FastAPI sirve los estáticos + API en un proceso → ventana de escritorio con **pywebview** → instalable con **PyInstaller** (Windows `.exe`, Linux AppImage/`.deb`).
 
+## Herramientas MCP
+
+El proyecto tiene instalado el servidor **MCP Context7** a nivel de usuario.
+
+Al trabajar con cualquier librería del stack (FastAPI, SQLModel, Alembic, React,
+Tailwind, shadcn/ui, Recharts, TanStack Query, TanStack Table, React Hook Form, Zod),
+añade **`use context7`** para consultar la documentación actualizada en lugar de
+basarte en los datos de entrenamiento.
+
+Esto es **especialmente importante en Tailwind v4 y shadcn/ui**, donde la sintaxis
+cambia respecto a versiones anteriores.
+
 ## Comandos
 
 > Dos mundos: `backend/` (Python) y `frontend/` (Node). Se trabaja con **dos terminales** en desarrollo.
