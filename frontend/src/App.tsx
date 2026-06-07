@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { getHealth } from "@/api/client";
+import { api } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,36 +11,16 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-type ConnectionStatus = "loading" | "ok" | "error";
-
-const STATUS_LABEL: Record<ConnectionStatus, string> = {
-  loading: "Conectando…",
-  ok: "Conectado ✓",
-  error: "Sin conexión con el backend",
-};
-
-const STATUS_CLASS: Record<ConnectionStatus, string> = {
-  loading: "text-muted-foreground",
-  ok: "text-income",
-  error: "text-expense",
-};
-
 export function App() {
-  const [status, setStatus] = useState<ConnectionStatus>("loading");
+  const { isFetching, isError, refetch } = useQuery({
+    queryKey: ["health"],
+    queryFn: () => api.health(),
+    retry: 1,
+  });
 
-  const checkHealth = useCallback(async () => {
-    setStatus("loading");
-    try {
-      const data = await getHealth();
-      setStatus(data.status === "ok" ? "ok" : "error");
-    } catch {
-      setStatus("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    void checkHealth();
-  }, [checkHealth]);
+  const status = isFetching ? "loading" : isError ? "error" : "ok";
+  const label = { loading: "Conectando…", ok: "Conectado ✓", error: "Sin conexión con el backend" }[status];
+  const cls = { loading: "text-muted-foreground", ok: "text-income", error: "text-expense" }[status];
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-6">
@@ -53,18 +33,14 @@ export function App() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between rounded-lg border p-4">
-            <span className="text-sm text-muted-foreground">
-              Estado del backend
-            </span>
-            <span className={cn("text-sm font-medium", STATUS_CLASS[status])}>
-              {STATUS_LABEL[status]}
-            </span>
+            <span className="text-sm text-muted-foreground">Estado del backend</span>
+            <span className={cn("text-sm font-medium", cls)}>{label}</span>
           </div>
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => void checkHealth()}
-            disabled={status === "loading"}
+            onClick={() => void refetch()}
+            disabled={isFetching}
           >
             Volver a comprobar
           </Button>
