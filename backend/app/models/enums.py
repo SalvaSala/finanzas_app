@@ -19,3 +19,8 @@ class TransactionType(StrEnum):
     income = "income"
     expense = "expense"
     transfer = "transfer"
+
+
+class BudgetPeriod(StrEnum):
+    monthly = "monthly"
+    yearly = "yearly"

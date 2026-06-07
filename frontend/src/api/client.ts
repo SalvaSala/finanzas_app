@@ -9,6 +9,11 @@ export type DashboardSummary = components["schemas"]["DashboardSummary"];
 export type CategoryAmount = components["schemas"]["CategoryAmount"];
 export type TransactionType = components["schemas"]["TransactionType"];
 export type CategoryType = components["schemas"]["CategoryType"];
+export type BudgetRead = components["schemas"]["BudgetRead"];
+export type BudgetCreate = components["schemas"]["BudgetCreate"];
+export type BudgetUpdate = components["schemas"]["BudgetUpdate"];
+export type BudgetProgress = components["schemas"]["BudgetProgress"];
+export type BudgetPeriod = components["schemas"]["BudgetPeriod"];
 
 type ListTransactionsQuery =
   paths["/api/transactions"]["get"]["parameters"]["query"];
@@ -69,5 +74,27 @@ export const api = {
       if (month != null) qs.set("month", String(month));
       return apiFetch<DashboardSummary>(`/api/dashboard/summary?${qs}`);
     },
+  },
+
+  budgets: {
+    list: () => apiFetch<BudgetRead[]>("/api/budgets"),
+    get: (id: number) => apiFetch<BudgetRead>(`/api/budgets/${id}`),
+    progress: (year: number, month?: number) => {
+      const qs = new URLSearchParams({ year: String(year) });
+      if (month != null) qs.set("month", String(month));
+      return apiFetch<BudgetProgress[]>(`/api/budgets/progress?${qs}`);
+    },
+    create: (data: BudgetCreate) =>
+      apiFetch<BudgetRead>("/api/budgets", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: number, data: BudgetUpdate) =>
+      apiFetch<BudgetRead>(`/api/budgets/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: number) =>
+      apiFetch<void>(`/api/budgets/${id}`, { method: "DELETE" }),
   },
 };

@@ -67,6 +67,24 @@ def total_by_type(
     return Decimal(str(total))
 
 
+def total_by_type_and_category(
+    session: Session,
+    transaction_type: TransactionType,
+    category_id: int,
+    start: dt.date,
+    end: dt.date,
+) -> Decimal:
+    """Sum of amounts for a type+category within a date range."""
+    statement = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+        col(Transaction.type) == transaction_type,
+        col(Transaction.category_id) == category_id,
+        col(Transaction.date) >= start,
+        col(Transaction.date) <= end,
+    )
+    total = session.exec(statement).one()
+    return Decimal(str(total))
+
+
 def sum_by_category(
     session: Session,
     transaction_type: TransactionType,
