@@ -33,3 +33,6 @@ data/*.sqlite3
 .idea/
 .DS_Store
 Thumbs.db
+
+# ─── Notas personales (no versionar) ────────────────
+COMO-ARRANCAR.txt
