@@ -1,12 +1,14 @@
-"""Schema-level tests for the SQLModel models using an in-memory database."""
+"""Schema-level tests for the SQLModel models using an in-memory database.
 
-from collections.abc import Generator
+The ``session`` fixture lives in ``tests/conftest.py``.
+"""
+
 from datetime import date
 from decimal import Decimal
 
 import pytest
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, select
 
 from app.models import (
     Account,
@@ -16,14 +18,6 @@ from app.models import (
     Transaction,
     TransactionType,
 )
-
-
-@pytest.fixture(name="session")
-def session_fixture() -> Generator[Session, None, None]:
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False})
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
 
 
 def test_create_account_category_and_transaction(session: Session) -> None:

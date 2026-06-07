@@ -5,8 +5,8 @@ on the Vite dev server and proxies ``/api`` here). In production / packaged buil
 the compiled frontend (``frontend/dist``) is served as static files from the same
 process, so there is a single origin and no CORS. See ``packaging/README.md``.
 
-On startup, Alembic migrations are applied so the local database is created/updated
-automatically on first run.
+On startup, Alembic migrations are applied and the default seed data is inserted,
+so the local database is created/updated and usable on first run.
 """
 
 from __future__ import annotations
@@ -17,15 +17,19 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from sqlmodel import Session
 
 from app.api import api_router
-from app.core.db import run_migrations
+from app.core.db import engine, run_migrations
 from app.core.paths import resource_path
+from app.services.seed import seed_initial_data
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     run_migrations()
+    with Session(engine) as session:
+        seed_initial_data(session)
     yield
 
 
