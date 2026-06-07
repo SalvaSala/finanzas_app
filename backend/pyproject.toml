@@ -33,6 +33,8 @@ extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# B008: FastAPI usa `Depends(...)` como valor por defecto de los parámetros (idiom).
+ignore = ["B008"]
 
 [tool.black]
 line-length = 100

@@ -15,13 +15,15 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from app.api import api_router
 from app.core.db import engine, run_migrations
 from app.core.paths import resource_path
+from app.services.exceptions import NotFoundError, ValidationError
 from app.services.seed import seed_initial_data
 
 
@@ -34,6 +36,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="FinApp", version="0.1.0", lifespan=lifespan)
+
+
+@app.exception_handler(NotFoundError)
+async def _handle_not_found(request: Request, exc: NotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(ValidationError)
+async def _handle_validation(request: Request, exc: ValidationError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
 
 app.include_router(api_router)
 
