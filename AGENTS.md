@@ -36,6 +36,18 @@ El proyecto tiene instalados tres servidores MCP a nivel de usuario:
 - **Playwright** — pruebas visuales del frontend. Úsalo para verificar que las
   pantallas se ven y se comportan correctamente abriendo un navegador real.
 
+## Skills
+
+El proyecto usa el ecosistema de skills de **skills.sh** (compatible con múltiples
+agentes). Antes de ejecutar cualquier tarea (crear componentes, escribir tests,
+revisar código, crear endpoints, refactorizar, etc.), comprueba si existe alguna
+skill instalada o disponible en el ecosistema (`npx skills find`) que pueda ayudar a
+hacer la tarea mejor. Si es relevante, úsala; si no aporta valor, continúa sin ella.
+**No instalar skills sin consultar antes.**
+
+Las slash commands del proyecto (`.claude/commands/`) son específicas de Claude Code:
+`/review`, `/commit`, `/new-endpoint`.
+
 ## Comandos
 
 > Dos mundos: `backend/` (Python) y `frontend/` (Node). Se trabaja con **dos terminales** en desarrollo.
