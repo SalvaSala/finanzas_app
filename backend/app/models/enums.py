@@ -18,4 +18,4 @@ class CategoryType(StrEnum):
 class TransactionType(StrEnum):
     income = "income"
     expense = "expense"
-    # `transfer` se añadirá en la Fase 2 (transferencias entre cuentas).
+    transfer = "transfer"

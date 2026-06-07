@@ -32,22 +32,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const schema = z.object({
-  date: z.string().min(1, "Obligatorio"),
-  type: z.enum(["income", "expense"] as const),
-  concept: z.string().min(1, "Obligatorio").max(200),
-  description: z.string().optional(),
-  amount: z
-    .string()
-    .min(1, "Obligatorio")
-    .refine(
-      (v) => /^\d+([.,]\d{1,2})?$/.test(v) && parseFloat(v.replace(",", ".")) > 0,
-      "Importe inválido (ej: 12.50)",
-    ),
-  account_id: z.string().min(1, "Obligatorio"),
-  category_id: z.string().optional(),
-  subcategory_id: z.string().optional(),
-});
+const schema = z
+  .object({
+    date: z.string().min(1, "Obligatorio"),
+    type: z.enum(["income", "expense", "transfer"] as const),
+    concept: z.string().min(1, "Obligatorio").max(200),
+    description: z.string().optional(),
+    amount: z
+      .string()
+      .min(1, "Obligatorio")
+      .refine(
+        (v) => /^\d+([.,]\d{1,2})?$/.test(v) && parseFloat(v.replace(",", ".")) > 0,
+        "Importe inválido (ej: 12.50)",
+      ),
+    account_id: z.string().min(1, "Obligatorio"),
+    transfer_account_id: z.string().optional(),
+    category_id: z.string().optional(),
+    subcategory_id: z.string().optional(),
+  })
+  .refine(
+    (v) =>
+      v.type !== "transfer" ||
+      (v.transfer_account_id && v.transfer_account_id !== v.account_id),
+    {
+      message: "Elige una cuenta destino distinta a la de origen",
+      path: ["transfer_account_id"],
+    },
+  );
 
 type FormValues = z.infer<typeof schema>;
 
@@ -59,7 +70,13 @@ interface Props {
   categories: CategoryRead[];
 }
 
-export function TransactionForm({ open, onOpenChange, transaction, accounts, categories }: Props) {
+export function TransactionForm({
+  open,
+  onOpenChange,
+  transaction,
+  accounts,
+  categories,
+}: Props) {
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
   const isEdit = !!transaction;
@@ -73,6 +90,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
       description: "",
       amount: "",
       account_id: accounts[0]?.id?.toString() ?? "",
+      transfer_account_id: "",
       category_id: "",
       subcategory_id: "",
     },
@@ -80,6 +98,8 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
 
   const selectedType = form.watch("type");
   const selectedCategoryId = form.watch("category_id");
+  const selectedAccountId = form.watch("account_id");
+  const isTransfer = selectedType === "transfer";
 
   const parentCategories = categories.filter(
     (c) => c.type === selectedType && c.parent_id === null,
@@ -96,11 +116,12 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
       if (transaction) {
         form.reset({
           date: transaction.date,
-          type: transaction.type,
+          type: transaction.type as FormValues["type"],
           concept: transaction.concept,
           description: transaction.description ?? "",
           amount: transaction.amount,
           account_id: transaction.account_id.toString(),
+          transfer_account_id: transaction.transfer_account_id?.toString() ?? "",
           category_id: transaction.category_id?.toString() ?? "",
           subcategory_id: transaction.subcategory_id?.toString() ?? "",
         });
@@ -112,6 +133,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
           description: "",
           amount: "",
           account_id: accounts[0]?.id?.toString() ?? "",
+          transfer_account_id: "",
           category_id: "",
           subcategory_id: "",
         });
@@ -123,6 +145,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
   useEffect(() => {
     form.setValue("category_id", "");
     form.setValue("subcategory_id", "");
+    form.setValue("transfer_account_id", "");
   }, [selectedType, form]);
 
   // Reset subcategory when category changes
@@ -132,16 +155,30 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
 
   async function onSubmit(values: FormValues) {
     const amount = values.amount.replace(",", ".");
-    const payload = {
-      date: values.date,
-      type: values.type,
-      concept: values.concept,
-      description: values.description || null,
-      amount,
-      account_id: parseInt(values.account_id),
-      category_id: values.category_id ? parseInt(values.category_id) : null,
-      subcategory_id: values.subcategory_id ? parseInt(values.subcategory_id) : null,
-    };
+
+    const payload = isTransfer
+      ? {
+          date: values.date,
+          type: "transfer" as const,
+          concept: values.concept,
+          description: values.description || null,
+          amount,
+          account_id: parseInt(values.account_id),
+          transfer_account_id: parseInt(values.transfer_account_id!),
+          category_id: null,
+          subcategory_id: null,
+        }
+      : {
+          date: values.date,
+          type: values.type as "income" | "expense",
+          concept: values.concept,
+          description: values.description || null,
+          amount,
+          account_id: parseInt(values.account_id),
+          transfer_account_id: null,
+          category_id: values.category_id ? parseInt(values.category_id) : null,
+          subcategory_id: values.subcategory_id ? parseInt(values.subcategory_id) : null,
+        };
 
     try {
       if (isEdit && transaction) {
@@ -184,6 +221,7 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
                     <SelectContent>
                       <SelectItem value="expense">Gasto</SelectItem>
                       <SelectItem value="income">Ingreso</SelectItem>
+                      <SelectItem value="transfer">Transferencia</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -236,13 +274,13 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
               )}
             />
 
-            {/* Account */}
+            {/* Source account */}
             <FormField
               control={form.control}
               name="account_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cuenta</FormLabel>
+                  <FormLabel>{isTransfer ? "Cuenta origen" : "Cuenta"}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -262,61 +300,93 @@ export function TransactionForm({ open, onOpenChange, transaction, accounts, cat
               )}
             />
 
-            {/* Category + Subcategory */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Destination account (transfer only) */}
+            {isTransfer && (
               <FormField
                 control={form.control}
-                name="category_id"
+                name="transfer_account_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Categoría</FormLabel>
+                    <FormLabel>Cuenta destino</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Sin categoría" />
+                          <SelectValue placeholder="Selecciona una cuenta" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {parentCategories.map((c) => (
-                          <SelectItem key={c.id} value={c.id.toString()}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
+                        {accounts
+                          .filter((a) => a.id.toString() !== selectedAccountId)
+                          .map((a) => (
+                            <SelectItem key={a.id} value={a.id.toString()}>
+                              {a.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="subcategory_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Subcategoría</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={subcategories.length === 0}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sin subcategoría" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {subcategories.map((c) => (
-                          <SelectItem key={c.id} value={c.id.toString()}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            )}
+
+            {/* Category + Subcategory (not for transfers) */}
+            {!isTransfer && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="category_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoría</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sin categoría" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {parentCategories.map((c) => (
+                            <SelectItem key={c.id} value={c.id.toString()}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="subcategory_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subcategoría</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={subcategories.length === 0}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sin subcategoría" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {subcategories.map((c) => (
+                            <SelectItem key={c.id} value={c.id.toString()}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             {/* Description */}
             <FormField

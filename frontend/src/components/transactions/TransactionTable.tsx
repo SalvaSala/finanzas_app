@@ -112,18 +112,18 @@ export function TransactionTable({ transactions, accounts, categories, onEdit }:
       accessorKey: "type",
       header: "Tipo",
       cell: ({ getValue }) => {
-        const type = getValue<"income" | "expense">();
+        const type = getValue<"income" | "expense" | "transfer">();
+        const label =
+          type === "income" ? "Ingreso" : type === "expense" ? "Gasto" : "Transferencia";
+        const cls =
+          type === "income"
+            ? "border-income text-income"
+            : type === "expense"
+              ? "border-expense text-expense"
+              : "border-muted-foreground text-muted-foreground";
         return (
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-xs",
-              type === "income"
-                ? "border-income text-income"
-                : "border-expense text-expense",
-            )}
-          >
-            {type === "income" ? "Ingreso" : "Gasto"}
+          <Badge variant="outline" className={cn("text-xs", cls)}>
+            {label}
           </Badge>
         );
       },
@@ -146,20 +146,33 @@ export function TransactionTable({ transactions, accounts, categories, onEdit }:
     {
       id: "account",
       header: "Cuenta",
-      cell: ({ row }) => accountMap.get(row.original.account_id) ?? "—",
+      cell: ({ row }) => {
+        const { account_id, transfer_account_id, type } = row.original;
+        const origin = accountMap.get(account_id) ?? "—";
+        if (type === "transfer" && transfer_account_id) {
+          const dest = accountMap.get(transfer_account_id) ?? "—";
+          return (
+            <span>
+              {origin} <span className="text-muted-foreground">→</span> {dest}
+            </span>
+          );
+        }
+        return <span>{origin}</span>;
+      },
     },
     {
       accessorKey: "amount",
       header: "Importe",
       cell: ({ row }) => {
         const { amount, type } = row.original;
+        const colorClass =
+          type === "income"
+            ? "text-income"
+            : type === "expense"
+              ? "text-expense"
+              : "text-muted-foreground";
         return (
-          <span
-            className={cn(
-              "font-medium tabular-nums",
-              type === "income" ? "text-income" : "text-expense",
-            )}
-          >
+          <span className={cn("font-medium tabular-nums", colorClass)}>
             {formatAmount(amount, type)}
           </span>
         );

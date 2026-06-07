@@ -1,12 +1,4 @@
-"""Business logic for transactions: validation and CRUD orchestration.
-
-Validation rules enforced here (beyond the schema-level ``amount > 0``):
-- the account must exist,
-- a category, if given, must be a top-level category whose type matches the
-  transaction type,
-- a subcategory, if given, must be a child category, belong to the given
-  category (when present) and match the transaction type.
-"""
+"""Business logic for transactions: validation and CRUD orchestration."""
 
 import datetime as dt
 
@@ -26,11 +18,19 @@ def _validate_refs(
     *,
     transaction_type: TransactionType,
     account_id: int,
+    transfer_account_id: int | None,
     category_id: int | None,
     subcategory_id: int | None,
 ) -> None:
     if account_repo.get(session, account_id) is None:
         raise NotFoundError("La cuenta indicada no existe.")
+
+    if transaction_type == TransactionType.transfer:
+        if transfer_account_id is None:
+            raise ValidationError("transfer_account_id es obligatorio para transferencias.")
+        if account_repo.get(session, transfer_account_id) is None:
+            raise NotFoundError("La cuenta destino indicada no existe.")
+        return
 
     category = None
     if category_id is not None:
@@ -59,6 +59,7 @@ def create_transaction(session: Session, data: TransactionCreate) -> Transaction
         session,
         transaction_type=data.type,
         account_id=data.account_id,
+        transfer_account_id=data.transfer_account_id,
         category_id=data.category_id,
         subcategory_id=data.subcategory_id,
     )
@@ -91,6 +92,7 @@ def update_transaction(
     merged = {
         "transaction_type": changes.get("type", transaction.type),
         "account_id": changes.get("account_id", transaction.account_id),
+        "transfer_account_id": changes.get("transfer_account_id", transaction.transfer_account_id),
         "category_id": changes.get("category_id", transaction.category_id),
         "subcategory_id": changes.get("subcategory_id", transaction.subcategory_id),
     }

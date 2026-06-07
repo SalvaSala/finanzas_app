@@ -31,9 +31,22 @@ class Transaction(SQLModel, table=True):
     category_id: int | None = Field(default=None, foreign_key="categories.id", index=True)
     subcategory_id: int | None = Field(default=None, foreign_key="categories.id", index=True)
     account_id: int = Field(foreign_key="accounts.id", index=True)
+    transfer_account_id: int | None = Field(default=None, foreign_key="accounts.id", index=True)
     created_at: dt.datetime = Field(default_factory=lambda: dt.datetime.now(dt.UTC))
 
-    account: Optional["Account"] = Relationship(back_populates="transactions")
+    account: Optional["Account"] = Relationship(
+        sa_relationship_kwargs={
+            "foreign_keys": "[Transaction.account_id]",
+            "primaryjoin": "Account.id == Transaction.account_id",
+        },
+        back_populates="transactions",
+    )
+    transfer_account: Optional["Account"] = Relationship(
+        sa_relationship_kwargs={
+            "foreign_keys": "[Transaction.transfer_account_id]",
+            "primaryjoin": "Account.id == Transaction.transfer_account_id",
+        },
+    )
     category: Optional["Category"] = Relationship(
         sa_relationship_kwargs={"foreign_keys": "Transaction.category_id"}
     )

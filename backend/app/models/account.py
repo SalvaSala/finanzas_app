@@ -21,4 +21,10 @@ class Account(SQLModel, table=True):
     initial_balance: Decimal = Field(default=Decimal("0"), max_digits=14, decimal_places=2)
     archived: bool = Field(default=False)
 
-    transactions: list["Transaction"] = Relationship(back_populates="account")
+    transactions: list["Transaction"] = Relationship(
+        back_populates="account",
+        sa_relationship_kwargs={
+            "foreign_keys": "[Transaction.account_id]",
+            "primaryjoin": "Account.id == Transaction.account_id",
+        },
+    )

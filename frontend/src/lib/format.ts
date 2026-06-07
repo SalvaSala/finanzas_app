@@ -14,7 +14,8 @@ const DATE_FMT = new Intl.DateTimeFormat("es-ES", {
 export function formatAmount(amount: string, type: TransactionType): string {
   const num = parseFloat(amount);
   const formatted = CURRENCY_FMT.format(num);
-  return type === "expense" ? `-${formatted}` : formatted;
+  if (type === "expense") return `-${formatted}`;
+  return formatted;
 }
 
 export function formatDate(isoDate: string): string {

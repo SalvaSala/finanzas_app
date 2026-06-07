@@ -3,7 +3,7 @@
 import datetime as dt
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import TransactionType
 
@@ -17,6 +17,19 @@ class TransactionCreate(BaseModel):
     category_id: int | None = None
     subcategory_id: int | None = None
     account_id: int
+    transfer_account_id: int | None = None
+
+    @model_validator(mode="after")
+    def validate_transfer_fields(self) -> "TransactionCreate":
+        if self.type == TransactionType.transfer:
+            if self.transfer_account_id is None:
+                raise ValueError("transfer_account_id es obligatorio para transferencias.")
+            if self.transfer_account_id == self.account_id:
+                raise ValueError("Las cuentas de origen y destino deben ser distintas.")
+        else:
+            if self.transfer_account_id is not None:
+                raise ValueError("transfer_account_id solo aplica a transferencias.")
+        return self
 
 
 class TransactionUpdate(BaseModel):
@@ -30,6 +43,7 @@ class TransactionUpdate(BaseModel):
     category_id: int | None = None
     subcategory_id: int | None = None
     account_id: int | None = None
+    transfer_account_id: int | None = None
 
 
 class TransactionRead(BaseModel):
@@ -44,4 +58,5 @@ class TransactionRead(BaseModel):
     category_id: int | None
     subcategory_id: int | None
     account_id: int
+    transfer_account_id: int | None
     created_at: dt.datetime

@@ -213,6 +213,8 @@ export interface components {
             subcategory_id?: number | null;
             /** Account Id */
             account_id: number;
+            /** Transfer Account Id */
+            transfer_account_id?: number | null;
         };
         /** TransactionRead */
         TransactionRead: {
@@ -236,6 +238,8 @@ export interface components {
             subcategory_id: number | null;
             /** Account Id */
             account_id: number;
+            /** Transfer Account Id */
+            transfer_account_id: number | null;
             /**
              * Created At
              * Format: date-time
@@ -246,7 +250,7 @@ export interface components {
          * TransactionType
          * @enum {string}
          */
-        TransactionType: "income" | "expense";
+        TransactionType: "income" | "expense" | "transfer";
         /**
          * TransactionUpdate
          * @description Partial update. Only fields present in the request are applied.
@@ -267,6 +271,8 @@ export interface components {
             subcategory_id?: number | null;
             /** Account Id */
             account_id?: number | null;
+            /** Transfer Account Id */
+            transfer_account_id?: number | null;
         };
         /** ValidationError */
         ValidationError: {
