@@ -36,3 +36,6 @@ Thumbs.db
 
 # ─── Notas personales (no versionar) ────────────────
 COMO-ARRANCAR.txt
+
+# ─── Capturas/artefactos de Playwright MCP ──────────
+.playwright-mcp/
