@@ -1,0 +1,349 @@
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
+
+import type { AccountRead, CategoryRead, TransactionRead } from "@/api/client";
+import { useCreateTransaction, useUpdateTransaction } from "@/hooks/useTransactions";
+import { todayIso } from "@/lib/format";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const schema = z.object({
+  date: z.string().min(1, "Obligatorio"),
+  type: z.enum(["income", "expense"] as const),
+  concept: z.string().min(1, "Obligatorio").max(200),
+  description: z.string().optional(),
+  amount: z
+    .string()
+    .min(1, "Obligatorio")
+    .refine(
+      (v) => /^\d+([.,]\d{1,2})?$/.test(v) && parseFloat(v.replace(",", ".")) > 0,
+      "Importe inválido (ej: 12.50)",
+    ),
+  account_id: z.string().min(1, "Obligatorio"),
+  category_id: z.string().optional(),
+  subcategory_id: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  transaction?: TransactionRead;
+  accounts: AccountRead[];
+  categories: CategoryRead[];
+}
+
+export function TransactionForm({ open, onOpenChange, transaction, accounts, categories }: Props) {
+  const create = useCreateTransaction();
+  const update = useUpdateTransaction();
+  const isEdit = !!transaction;
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      date: todayIso(),
+      type: "expense",
+      concept: "",
+      description: "",
+      amount: "",
+      account_id: accounts[0]?.id?.toString() ?? "",
+      category_id: "",
+      subcategory_id: "",
+    },
+  });
+
+  const selectedType = form.watch("type");
+  const selectedCategoryId = form.watch("category_id");
+
+  const parentCategories = categories.filter(
+    (c) => c.type === selectedType && c.parent_id === null,
+  );
+  const subcategories = categories.filter(
+    (c) =>
+      c.parent_id !== null &&
+      selectedCategoryId &&
+      c.parent_id === parseInt(selectedCategoryId),
+  );
+
+  useEffect(() => {
+    if (open) {
+      if (transaction) {
+        form.reset({
+          date: transaction.date,
+          type: transaction.type,
+          concept: transaction.concept,
+          description: transaction.description ?? "",
+          amount: transaction.amount,
+          account_id: transaction.account_id.toString(),
+          category_id: transaction.category_id?.toString() ?? "",
+          subcategory_id: transaction.subcategory_id?.toString() ?? "",
+        });
+      } else {
+        form.reset({
+          date: todayIso(),
+          type: "expense",
+          concept: "",
+          description: "",
+          amount: "",
+          account_id: accounts[0]?.id?.toString() ?? "",
+          category_id: "",
+          subcategory_id: "",
+        });
+      }
+    }
+  }, [open, transaction, accounts, form]);
+
+  // Reset category when type changes
+  useEffect(() => {
+    form.setValue("category_id", "");
+    form.setValue("subcategory_id", "");
+  }, [selectedType, form]);
+
+  // Reset subcategory when category changes
+  useEffect(() => {
+    form.setValue("subcategory_id", "");
+  }, [selectedCategoryId, form]);
+
+  async function onSubmit(values: FormValues) {
+    const amount = values.amount.replace(",", ".");
+    const payload = {
+      date: values.date,
+      type: values.type,
+      concept: values.concept,
+      description: values.description || null,
+      amount,
+      account_id: parseInt(values.account_id),
+      category_id: values.category_id ? parseInt(values.category_id) : null,
+      subcategory_id: values.subcategory_id ? parseInt(values.subcategory_id) : null,
+    };
+
+    try {
+      if (isEdit && transaction) {
+        await update.mutateAsync({ id: transaction.id, data: payload });
+        toast.success("Movimiento actualizado");
+      } else {
+        await create.mutateAsync(payload);
+        toast.success("Movimiento creado");
+      }
+      onOpenChange(false);
+    } catch {
+      toast.error("Error al guardar el movimiento");
+    }
+  }
+
+  const isPending = create.isPending || update.isPending;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Editar movimiento" : "Nuevo movimiento"}</DialogTitle>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Type */}
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="expense">Gasto</SelectItem>
+                      <SelectItem value="income">Ingreso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Date + Amount */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fecha</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Importe (€)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Concept */}
+            <FormField
+              control={form.control}
+              name="concept"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Concepto</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: Supermercado Mercadona" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Account */}
+            <FormField
+              control={form.control}
+              name="account_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cuenta</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una cuenta" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {accounts.map((a) => (
+                        <SelectItem key={a.id} value={a.id.toString()}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Category + Subcategory */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="category_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin categoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {parentCategories.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="subcategory_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subcategoría</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={subcategories.length === 0}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sin subcategoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {subcategories.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Description */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notas (opcional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Detalles adicionales…" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear movimiento"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
