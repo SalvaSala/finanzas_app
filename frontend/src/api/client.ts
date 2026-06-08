@@ -15,8 +15,9 @@ export type BudgetUpdate = components["schemas"]["BudgetUpdate"];
 export type BudgetProgress = components["schemas"]["BudgetProgress"];
 export type BudgetPeriod = components["schemas"]["BudgetPeriod"];
 
-type ListTransactionsQuery =
-  paths["/api/transactions"]["get"]["parameters"]["query"];
+export type ListTransactionsQuery = NonNullable<
+  paths["/api/transactions"]["get"]["parameters"]["query"]
+>;
 
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -48,6 +49,11 @@ export const api = {
       if (params?.year != null) qs.set("year", String(params.year));
       if (params?.month != null) qs.set("month", String(params.month));
       if (params?.limit != null) qs.set("limit", String(params.limit));
+      if (params?.type != null) qs.set("type", params.type);
+      if (params?.category_id != null) qs.set("category_id", String(params.category_id));
+      if (params?.account_id != null) qs.set("account_id", String(params.account_id));
+      if (params?.search != null && params.search !== "")
+        qs.set("search", params.search);
       const query = qs.toString();
       return apiFetch<TransactionRead[]>(
         `/api/transactions${query ? `?${query}` : ""}`,

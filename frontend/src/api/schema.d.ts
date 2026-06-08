@@ -469,6 +469,10 @@ export interface operations {
                 year?: number | null;
                 month?: number | null;
                 limit?: number | null;
+                type?: components["schemas"]["TransactionType"] | null;
+                category_id?: number | null;
+                account_id?: number | null;
+                search?: string | null;
             };
             header?: never;
             path?: never;

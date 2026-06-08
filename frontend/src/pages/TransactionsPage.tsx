@@ -1,19 +1,29 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
-import type { TransactionRead } from "@/api/client";
+import type { ListTransactionsQuery, TransactionRead } from "@/api/client";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
-import { Button } from "@/components/ui/button";
+import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
+import { TransactionFilters } from "@/components/transactions/TransactionFilters";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+
+const now = new Date();
 
 export function TransactionsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionRead | undefined>();
 
-  const { data: transactions = [], isLoading: loadingTx } = useTransactions();
+  const [filters, setFilters] = useState<ListTransactionsQuery>({
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+  });
+
+  const { data: transactions = [], isLoading: loadingTx } = useTransactions(filters);
   const { data: accounts = [], isLoading: loadingAcc } = useAccounts();
   const { data: categories = [] } = useCategories();
 
@@ -27,16 +37,23 @@ export function TransactionsPage() {
     setFormOpen(true);
   }
 
+  function handleYearChange(year: number) {
+    setFilters((f) => ({ ...f, year, month: undefined }));
+  }
+
+  function handleMonthChange(month: number | undefined) {
+    setFilters((f) => ({ ...f, month }));
+  }
+
   const loading = loadingTx || loadingAcc;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Movimientos</h1>
           <p className="text-sm text-muted-foreground">
-            {transactions.length} movimiento{transactions.length !== 1 ? "s" : ""} registrado
-            {transactions.length !== 1 ? "s" : ""}
+            {transactions.length} resultado{transactions.length !== 1 ? "s" : ""}
           </p>
         </div>
         <Button onClick={openCreate} disabled={loading}>
@@ -44,6 +61,22 @@ export function TransactionsPage() {
           Nuevo movimiento
         </Button>
       </div>
+
+      <PeriodSelector
+        year={filters.year ?? now.getFullYear()}
+        month={filters.month ?? undefined}
+        onYearChange={handleYearChange}
+        onMonthChange={handleMonthChange}
+      />
+
+      <TransactionFilters
+        filters={filters}
+        onChange={setFilters}
+        accounts={accounts}
+        categories={categories}
+      />
+
+      <Separator />
 
       {loading ? (
         <div className="py-24 text-center text-muted-foreground">Cargando…</div>

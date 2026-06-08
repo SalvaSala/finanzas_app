@@ -79,8 +79,21 @@ def list_transactions(
     start: dt.date | None = None,
     end: dt.date | None = None,
     limit: int | None = None,
+    transaction_type: TransactionType | None = None,
+    category_id: int | None = None,
+    account_id: int | None = None,
+    search: str | None = None,
 ) -> list[Transaction]:
-    return transaction_repo.list_(session, start, end, limit)
+    return transaction_repo.list_(
+        session,
+        start,
+        end,
+        limit,
+        transaction_type=transaction_type,
+        category_id=category_id,
+        account_id=account_id,
+        search=search,
+    )
 
 
 def update_transaction(

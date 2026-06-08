@@ -5,6 +5,7 @@ from sqlmodel import Session
 
 from app.core.db import get_session
 from app.models import Transaction
+from app.models.enums import TransactionType
 from app.schemas import TransactionCreate, TransactionRead, TransactionUpdate
 from app.services import transaction as transaction_service
 from app.services.periods import period_range
@@ -17,12 +18,25 @@ def list_transactions(
     year: int | None = Query(default=None),
     month: int | None = Query(default=None, ge=1, le=12),
     limit: int | None = Query(default=None, ge=1),
+    type: TransactionType | None = Query(default=None),
+    category_id: int | None = Query(default=None),
+    account_id: int | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=200),
     session: Session = Depends(get_session),
 ) -> list[Transaction]:
     start = end = None
     if year is not None:
         start, end = period_range(year, month)
-    return transaction_service.list_transactions(session, start, end, limit)
+    return transaction_service.list_transactions(
+        session,
+        start,
+        end,
+        limit,
+        transaction_type=type,
+        category_id=category_id,
+        account_id=account_id,
+        search=search,
+    )
 
 
 @router.post("", response_model=TransactionRead, status_code=status.HTTP_201_CREATED)

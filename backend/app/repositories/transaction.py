@@ -38,13 +38,28 @@ def list_(
     start: dt.date | None = None,
     end: dt.date | None = None,
     limit: int | None = None,
+    transaction_type: TransactionType | None = None,
+    category_id: int | None = None,
+    account_id: int | None = None,
+    search: str | None = None,
 ) -> list[Transaction]:
-    """List transactions (newest first), optionally filtered by date range."""
+    """List transactions (newest first) with optional filters."""
     statement = select(Transaction)
     if start is not None:
         statement = statement.where(col(Transaction.date) >= start)
     if end is not None:
         statement = statement.where(col(Transaction.date) <= end)
+    if transaction_type is not None:
+        statement = statement.where(col(Transaction.type) == transaction_type)
+    if category_id is not None:
+        statement = statement.where(col(Transaction.category_id) == category_id)
+    if account_id is not None:
+        statement = statement.where(
+            (col(Transaction.account_id) == account_id)
+            | (col(Transaction.transfer_account_id) == account_id)
+        )
+    if search is not None and search.strip():
+        statement = statement.where(col(Transaction.concept).ilike(f"%{search.strip()}%"))
     statement = statement.order_by(col(Transaction.date).desc(), col(Transaction.id).desc())
     if limit is not None:
         statement = statement.limit(limit)
