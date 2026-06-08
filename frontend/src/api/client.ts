@@ -14,6 +14,7 @@ export type BudgetCreate = components["schemas"]["BudgetCreate"];
 export type BudgetUpdate = components["schemas"]["BudgetUpdate"];
 export type BudgetProgress = components["schemas"]["BudgetProgress"];
 export type BudgetPeriod = components["schemas"]["BudgetPeriod"];
+export type MonthlyStats = components["schemas"]["MonthlyStats"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
@@ -103,6 +104,8 @@ export const api = {
       if (month != null) qs.set("month", String(month));
       return apiFetch<DashboardSummary>(`/api/dashboard/summary?${qs}`);
     },
+    monthly: (year: number) =>
+      apiFetch<MonthlyStats[]>(`/api/dashboard/monthly?year=${year}`),
   },
 
   budgets: {

@@ -3,7 +3,7 @@
 from app.schemas.account import AccountRead
 from app.schemas.budget import BudgetCreate, BudgetProgress, BudgetRead, BudgetUpdate
 from app.schemas.category import CategoryRead
-from app.schemas.dashboard import CategoryAmount, DashboardSummary
+from app.schemas.dashboard import CategoryAmount, DashboardSummary, MonthlyStats
 from app.schemas.transaction import (
     ImportResult,
     TransactionCreate,
@@ -20,6 +20,7 @@ __all__ = [
     "CategoryRead",
     "CategoryAmount",
     "DashboardSummary",
+    "MonthlyStats",
     "ImportResult",
     "TransactionCreate",
     "TransactionRead",

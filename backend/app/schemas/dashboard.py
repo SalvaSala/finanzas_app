@@ -24,3 +24,13 @@ class DashboardSummary(BaseModel):
     balance: Decimal
     expense_by_category: list[CategoryAmount]
     income_by_category: list[CategoryAmount]
+
+
+class MonthlyStats(BaseModel):
+    """Income, expense and cumulative balance for a single month."""
+
+    month: int
+    income: Decimal
+    expense: Decimal
+    balance: Decimal
+    cumulative_balance: Decimal

@@ -8,3 +8,11 @@ export function useDashboard(year: number, month?: number) {
     enabled: year > 0,
   });
 }
+
+export function useDashboardMonthly(year: number) {
+  return useQuery({
+    queryKey: ["dashboard", "monthly", year],
+    queryFn: () => api.dashboard.monthly(year),
+    enabled: year > 0,
+  });
+}

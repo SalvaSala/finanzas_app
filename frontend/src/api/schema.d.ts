@@ -146,6 +146,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/monthly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Monthly */
+        get: operations["get_monthly_api_dashboard_monthly_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/budgets": {
         parameters: {
             query?: never;
@@ -345,6 +362,22 @@ export interface components {
             skipped: number;
             /** Errors */
             errors: string[];
+        };
+        /**
+         * MonthlyStats
+         * @description Income, expense and cumulative balance for a single month.
+         */
+        MonthlyStats: {
+            /** Month */
+            month: number;
+            /** Income */
+            income: string;
+            /** Expense */
+            expense: string;
+            /** Balance */
+            balance: string;
+            /** Cumulative Balance */
+            cumulative_balance: string;
         };
         /** TransactionCreate */
         TransactionCreate: {
@@ -764,6 +797,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_monthly_api_dashboard_monthly_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthlyStats"][];
                 };
             };
             /** @description Validation Error */

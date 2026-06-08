@@ -11,7 +11,7 @@ from sqlmodel import Session
 from app.models.enums import TransactionType
 from app.repositories import category as category_repo
 from app.repositories import transaction as transaction_repo
-from app.schemas.dashboard import CategoryAmount, DashboardSummary
+from app.schemas.dashboard import CategoryAmount, DashboardSummary, MonthlyStats
 from app.services.periods import period_range
 
 UNCATEGORIZED_LABEL = "Sin categoría"
@@ -52,3 +52,25 @@ def get_summary(session: Session, year: int, month: int | None) -> DashboardSumm
         expense_by_category=breakdown(TransactionType.expense),
         income_by_category=breakdown(TransactionType.income),
     )
+
+
+def get_monthly_breakdown(session: Session, year: int) -> list[MonthlyStats]:
+    """Monthly income/expense/balance for each of the 12 months of a year."""
+    cumulative = Decimal("0")
+    result = []
+    for month in range(1, 13):
+        start, end = period_range(year, month)
+        income = transaction_repo.total_by_type(session, TransactionType.income, start, end)
+        expense = transaction_repo.total_by_type(session, TransactionType.expense, start, end)
+        balance = income - expense
+        cumulative += balance
+        result.append(
+            MonthlyStats(
+                month=month,
+                income=income,
+                expense=expense,
+                balance=balance,
+                cumulative_balance=cumulative,
+            )
+        )
+    return result
