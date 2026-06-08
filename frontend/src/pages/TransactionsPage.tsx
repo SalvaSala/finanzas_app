@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Download, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 import type { ListTransactionsQuery, TransactionRead } from "@/api/client";
+import { api } from "@/api/client";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransactions } from "@/hooks/useTransactions";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
+import { CsvImportDialog } from "@/components/transactions/CsvImportDialog";
 import { TransactionFilters } from "@/components/transactions/TransactionFilters";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
@@ -16,6 +19,7 @@ const now = new Date();
 
 export function TransactionsPage() {
   const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionRead | undefined>();
 
   const [filters, setFilters] = useState<ListTransactionsQuery>({
@@ -37,6 +41,22 @@ export function TransactionsPage() {
     setFormOpen(true);
   }
 
+  async function handleExport() {
+    try {
+      const res = await api.transactions.exportCsv(filters);
+      if (!res.ok) throw new Error("Error al exportar");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `movimientos_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Error al exportar el CSV");
+    }
+  }
+
   function handleYearChange(year: number) {
     setFilters((f) => ({ ...f, year, month: undefined }));
   }
@@ -56,10 +76,20 @@ export function TransactionsPage() {
             {transactions.length} resultado{transactions.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button onClick={openCreate} disabled={loading}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo movimiento
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importar
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={transactions.length === 0}>
+            <Download className="mr-2 h-4 w-4" />
+            Exportar
+          </Button>
+          <Button onClick={openCreate} disabled={loading}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo movimiento
+          </Button>
+        </div>
       </div>
 
       <PeriodSelector
@@ -96,6 +126,8 @@ export function TransactionsPage() {
         accounts={accounts}
         categories={categories}
       />
+
+      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

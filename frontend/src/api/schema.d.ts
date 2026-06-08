@@ -76,6 +76,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/transactions/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Transactions */
+        get: operations["export_transactions_api_transactions_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transactions/import-csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Transactions */
+        post: operations["import_transactions_api_transactions_import_csv_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transactions/{transaction_id}": {
         parameters: {
             query?: never;
@@ -189,6 +223,11 @@ export interface components {
          * @enum {string}
          */
         AccountType: "cash" | "bank" | "card" | "savings";
+        /** Body_import_transactions_api_transactions_import_csv_post */
+        Body_import_transactions_api_transactions_import_csv_post: {
+            /** File */
+            file: string;
+        };
         /** BudgetCreate */
         BudgetCreate: {
             /** Category Id */
@@ -297,6 +336,15 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ImportResult */
+        ImportResult: {
+            /** Imported */
+            imported: number;
+            /** Skipped */
+            skipped: number;
+            /** Errors */
+            errors: string[];
         };
         /** TransactionCreate */
         TransactionCreate: {
@@ -520,6 +568,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransactionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_transactions_api_transactions_export_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+                month?: number | null;
+                type?: components["schemas"]["TransactionType"] | null;
+                category_id?: number | null;
+                account_id?: number | null;
+                search?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_transactions_api_transactions_import_csv_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_transactions_api_transactions_import_csv_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResult"];
                 };
             };
             /** @description Validation Error */

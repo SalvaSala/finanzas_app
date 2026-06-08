@@ -1,4 +1,4 @@
-"""API DTOs for transactions."""
+"""API DTOs for transactions and CSV import results."""
 
 import datetime as dt
 from decimal import Decimal
@@ -60,3 +60,9 @@ class TransactionRead(BaseModel):
     account_id: int
     transfer_account_id: int | None
     created_at: dt.datetime
+
+
+class ImportResult(BaseModel):
+    imported: int
+    skipped: int
+    errors: list[str]

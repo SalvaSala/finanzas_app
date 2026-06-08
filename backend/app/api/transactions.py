@@ -1,12 +1,17 @@
-"""CRUD endpoints for transactions."""
+"""CRUD endpoints for transactions, plus CSV export/import."""
 
-from fastapi import APIRouter, Depends, Query, status
+import datetime as dt
+
+from fastapi import APIRouter, Depends, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session
 
 from app.core.db import get_session
 from app.models import Transaction
 from app.models.enums import TransactionType
 from app.schemas import TransactionCreate, TransactionRead, TransactionUpdate
+from app.schemas.transaction import ImportResult
+from app.services import csv_io
 from app.services import transaction as transaction_service
 from app.services.periods import period_range
 
@@ -44,6 +49,56 @@ def create_transaction(
     data: TransactionCreate, session: Session = Depends(get_session)
 ) -> Transaction:
     return transaction_service.create_transaction(session, data)
+
+
+# NOTE: /export and /import-csv must be declared BEFORE /{transaction_id}
+# so FastAPI does not treat the literal strings as integer path params.
+
+
+@router.get("/export")
+def export_transactions(
+    year: int | None = Query(default=None),
+    month: int | None = Query(default=None, ge=1, le=12),
+    type: TransactionType | None = Query(default=None),
+    category_id: int | None = Query(default=None),
+    account_id: int | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=200),
+    session: Session = Depends(get_session),
+) -> StreamingResponse:
+    start = end = None
+    if year is not None:
+        start, end = period_range(year, month)
+    transactions = transaction_service.list_transactions(
+        session,
+        start,
+        end,
+        transaction_type=type,
+        category_id=category_id,
+        account_id=account_id,
+        search=search,
+    )
+    csv_content = csv_io.export_csv(session, transactions)
+    today = dt.date.today().isoformat()
+    filename = f"movimientos_{today}.csv"
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/import-csv", response_model=ImportResult)
+async def import_transactions(
+    file: UploadFile,
+    session: Session = Depends(get_session),
+) -> ImportResult:
+    raw = await file.read()
+    try:
+        content = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        content = raw.decode("latin-1")
+    result = csv_io.import_csv(session, content)
+    return ImportResult(**result.to_dict())
 
 
 @router.get("/{transaction_id}", response_model=TransactionRead)

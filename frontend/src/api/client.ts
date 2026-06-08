@@ -18,6 +18,7 @@ export type BudgetPeriod = components["schemas"]["BudgetPeriod"];
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
 >;
+export type ImportResult = components["schemas"]["ImportResult"];
 
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -72,6 +73,28 @@ export const api = {
       }),
     delete: (id: number) =>
       apiFetch<void>(`/api/transactions/${id}`, { method: "DELETE" }),
+
+    exportCsv: (params?: Omit<ListTransactionsQuery, "limit">) => {
+      const qs = new URLSearchParams();
+      if (params?.year != null) qs.set("year", String(params.year));
+      if (params?.month != null) qs.set("month", String(params.month));
+      if (params?.type != null) qs.set("type", params.type);
+      if (params?.category_id != null) qs.set("category_id", String(params.category_id));
+      if (params?.account_id != null) qs.set("account_id", String(params.account_id));
+      if (params?.search) qs.set("search", params.search);
+      const query = qs.toString();
+      return fetch(`/api/transactions/export${query ? `?${query}` : ""}`);
+    },
+
+    importCsv: (file: File) => {
+      const body = new FormData();
+      body.append("file", file);
+      return apiFetch<ImportResult>("/api/transactions/import-csv", {
+        method: "POST",
+        headers: {},
+        body,
+      });
+    },
   },
 
   dashboard: {
