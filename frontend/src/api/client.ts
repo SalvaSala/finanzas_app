@@ -15,6 +15,11 @@ export type BudgetUpdate = components["schemas"]["BudgetUpdate"];
 export type BudgetProgress = components["schemas"]["BudgetProgress"];
 export type BudgetPeriod = components["schemas"]["BudgetPeriod"];
 export type MonthlyStats = components["schemas"]["MonthlyStats"];
+export type RecurringRead = components["schemas"]["RecurringRead"];
+export type RecurringCreate = components["schemas"]["RecurringCreate"];
+export type RecurringUpdate = components["schemas"]["RecurringUpdate"];
+export type RecurringRunResult = components["schemas"]["RecurringRunResult"];
+export type RecurrenceFrequency = components["schemas"]["RecurrenceFrequency"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
@@ -128,5 +133,24 @@ export const api = {
       }),
     delete: (id: number) =>
       apiFetch<void>(`/api/budgets/${id}`, { method: "DELETE" }),
+  },
+
+  recurring: {
+    list: () => apiFetch<RecurringRead[]>("/api/recurring"),
+    get: (id: number) => apiFetch<RecurringRead>(`/api/recurring/${id}`),
+    create: (data: RecurringCreate) =>
+      apiFetch<RecurringRead>("/api/recurring", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: number, data: RecurringUpdate) =>
+      apiFetch<RecurringRead>(`/api/recurring/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: number) =>
+      apiFetch<void>(`/api/recurring/${id}`, { method: "DELETE" }),
+    run: () =>
+      apiFetch<RecurringRunResult>("/api/recurring/run", { method: "POST" }),
   },
 };

@@ -7,7 +7,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import { Pencil, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Pencil, Trash2, ChevronUp, ChevronDown, Repeat } from "lucide-react";
 import { toast } from "sonner";
 
 import type { AccountRead, CategoryRead, TransactionRead } from "@/api/client";
@@ -131,6 +131,17 @@ export function TransactionTable({ transactions, accounts, categories, onEdit }:
     {
       accessorKey: "concept",
       header: "Concepto",
+      cell: ({ row }) => (
+        <span className="flex items-center gap-1.5">
+          {row.original.concept}
+          {row.original.recurring_id != null && (
+            <Repeat
+              className="h-3 w-3 shrink-0 text-muted-foreground"
+              aria-label="Generado por una recurrencia"
+            />
+          )}
+        </span>
+      ),
     },
     {
       id: "category",

@@ -32,6 +32,9 @@ class Transaction(SQLModel, table=True):
     subcategory_id: int | None = Field(default=None, foreign_key="categories.id", index=True)
     account_id: int = Field(foreign_key="accounts.id", index=True)
     transfer_account_id: int | None = Field(default=None, foreign_key="accounts.id", index=True)
+    recurring_id: int | None = Field(
+        default=None, foreign_key="recurring_transactions.id", index=True
+    )
     created_at: dt.datetime = Field(default_factory=lambda: dt.datetime.now(dt.UTC))
 
     account: Optional["Account"] = Relationship(

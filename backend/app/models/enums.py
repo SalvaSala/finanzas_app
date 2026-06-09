@@ -24,3 +24,10 @@ class TransactionType(StrEnum):
 class BudgetPeriod(StrEnum):
     monthly = "monthly"
     yearly = "yearly"
+
+
+class RecurrenceFrequency(StrEnum):
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+    yearly = "yearly"

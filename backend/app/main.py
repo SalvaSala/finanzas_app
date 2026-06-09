@@ -23,6 +23,7 @@ from sqlmodel import Session
 from app.api import api_router
 from app.core.db import engine, run_migrations
 from app.core.paths import resource_path
+from app.services import recurring as recurring_service
 from app.services.exceptions import NotFoundError, ValidationError
 from app.services.seed import seed_initial_data
 
@@ -32,6 +33,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     run_migrations()
     with Session(engine) as session:
         seed_initial_data(session)
+        # Catch up any recurring movements due since the last run.
+        recurring_service.run_due(session)
     yield
 
 

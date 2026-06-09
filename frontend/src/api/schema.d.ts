@@ -217,6 +217,60 @@ export interface paths {
         patch: operations["update_budget_api_budgets__budget_id__patch"];
         trace?: never;
     };
+    "/api/recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Recurring */
+        get: operations["list_recurring_api_recurring_get"];
+        put?: never;
+        /** Create Recurring */
+        post: operations["create_recurring_api_recurring_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/recurring/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Recurring */
+        post: operations["run_recurring_api_recurring_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/recurring/{recurring_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Recurring */
+        get: operations["get_recurring_api_recurring__recurring_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Recurring */
+        delete: operations["delete_recurring_api_recurring__recurring_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Recurring */
+        patch: operations["update_recurring_api_recurring__recurring_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -379,6 +433,118 @@ export interface components {
             /** Cumulative Balance */
             cumulative_balance: string;
         };
+        /**
+         * RecurrenceFrequency
+         * @enum {string}
+         */
+        RecurrenceFrequency: "daily" | "weekly" | "monthly" | "yearly";
+        /** RecurringCreate */
+        RecurringCreate: {
+            type: components["schemas"]["TransactionType"];
+            /** Concept */
+            concept: string;
+            /** Description */
+            description?: string | null;
+            /** Amount */
+            amount: number | string;
+            /** Category Id */
+            category_id?: number | null;
+            /** Subcategory Id */
+            subcategory_id?: number | null;
+            /** Account Id */
+            account_id: number;
+            /** Transfer Account Id */
+            transfer_account_id?: number | null;
+            frequency: components["schemas"]["RecurrenceFrequency"];
+            /**
+             * Interval
+             * @default 1
+             */
+            interval: number;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** End Date */
+            end_date?: string | null;
+        };
+        /** RecurringRead */
+        RecurringRead: {
+            /** Id */
+            id: number;
+            type: components["schemas"]["TransactionType"];
+            /** Concept */
+            concept: string;
+            /** Description */
+            description: string | null;
+            /** Amount */
+            amount: string;
+            /** Category Id */
+            category_id: number | null;
+            /** Subcategory Id */
+            subcategory_id: number | null;
+            /** Account Id */
+            account_id: number;
+            /** Transfer Account Id */
+            transfer_account_id: number | null;
+            frequency: components["schemas"]["RecurrenceFrequency"];
+            /** Interval */
+            interval: number;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** End Date */
+            end_date: string | null;
+            /**
+             * Next Run Date
+             * Format: date
+             */
+            next_run_date: string;
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** RecurringRunResult */
+        RecurringRunResult: {
+            /** Generated */
+            generated: number;
+        };
+        /**
+         * RecurringUpdate
+         * @description Partial update. Only fields present in the request are applied.
+         */
+        RecurringUpdate: {
+            /** Concept */
+            concept?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Amount */
+            amount?: number | string | null;
+            /** Category Id */
+            category_id?: number | null;
+            /** Subcategory Id */
+            subcategory_id?: number | null;
+            /** Account Id */
+            account_id?: number | null;
+            /** Transfer Account Id */
+            transfer_account_id?: number | null;
+            frequency?: components["schemas"]["RecurrenceFrequency"] | null;
+            /** Interval */
+            interval?: number | null;
+            /** Start Date */
+            start_date?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Active */
+            active?: boolean | null;
+        };
         /** TransactionCreate */
         TransactionCreate: {
             /**
@@ -426,6 +592,8 @@ export interface components {
             account_id: number;
             /** Transfer Account Id */
             transfer_account_id: number | null;
+            /** Recurring Id */
+            recurring_id: number | null;
             /**
              * Created At
              * Format: date-time
@@ -1008,6 +1176,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_recurring_api_recurring_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRead"][];
+                };
+            };
+        };
+    };
+    create_recurring_api_recurring_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_recurring_api_recurring_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRunResult"];
+                };
+            };
+        };
+    };
+    get_recurring_api_recurring__recurring_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recurring_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_recurring_api_recurring__recurring_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recurring_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_recurring_api_recurring__recurring_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recurring_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecurringUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRead"];
                 };
             };
             /** @description Validation Error */

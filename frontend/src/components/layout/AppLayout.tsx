@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, Target } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Target, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/transacciones", label: "Movimientos", icon: ArrowLeftRight },
   { to: "/presupuestos", label: "Presupuestos", icon: Target },
+  { to: "/recurrentes", label: "Recurrentes", icon: Repeat },
 ];
 
 export function AppLayout() {

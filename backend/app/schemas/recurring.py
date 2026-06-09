@@ -1,15 +1,14 @@
-"""API DTOs for transactions and CSV import results."""
+"""API DTOs for recurring transactions."""
 
 import datetime as dt
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.enums import TransactionType
+from app.models.enums import RecurrenceFrequency, TransactionType
 
 
-class TransactionCreate(BaseModel):
-    date: dt.date
+class RecurringCreate(BaseModel):
     type: TransactionType
     concept: str = Field(min_length=1, max_length=200)
     description: str | None = None
@@ -18,9 +17,13 @@ class TransactionCreate(BaseModel):
     subcategory_id: int | None = None
     account_id: int
     transfer_account_id: int | None = None
+    frequency: RecurrenceFrequency
+    interval: int = Field(default=1, gt=0)
+    start_date: dt.date
+    end_date: dt.date | None = None
 
     @model_validator(mode="after")
-    def validate_transfer_fields(self) -> "TransactionCreate":
+    def validate_fields(self) -> "RecurringCreate":
         if self.type == TransactionType.transfer:
             if self.transfer_account_id is None:
                 raise ValueError("transfer_account_id es obligatorio para transferencias.")
@@ -29,14 +32,14 @@ class TransactionCreate(BaseModel):
         else:
             if self.transfer_account_id is not None:
                 raise ValueError("transfer_account_id solo aplica a transferencias.")
+        if self.end_date is not None and self.end_date < self.start_date:
+            raise ValueError("La fecha de fin no puede ser anterior a la de inicio.")
         return self
 
 
-class TransactionUpdate(BaseModel):
+class RecurringUpdate(BaseModel):
     """Partial update. Only fields present in the request are applied."""
 
-    date: dt.date | None = None
-    type: TransactionType | None = None
     concept: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
     amount: Decimal | None = Field(default=None, gt=0, max_digits=14, decimal_places=2)
@@ -44,13 +47,17 @@ class TransactionUpdate(BaseModel):
     subcategory_id: int | None = None
     account_id: int | None = None
     transfer_account_id: int | None = None
+    frequency: RecurrenceFrequency | None = None
+    interval: int | None = Field(default=None, gt=0)
+    start_date: dt.date | None = None
+    end_date: dt.date | None = None
+    active: bool | None = None
 
 
-class TransactionRead(BaseModel):
+class RecurringRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    date: dt.date
     type: TransactionType
     concept: str
     description: str | None
@@ -59,11 +66,14 @@ class TransactionRead(BaseModel):
     subcategory_id: int | None
     account_id: int
     transfer_account_id: int | None
-    recurring_id: int | None
+    frequency: RecurrenceFrequency
+    interval: int
+    start_date: dt.date
+    end_date: dt.date | None
+    next_run_date: dt.date
+    active: bool
     created_at: dt.datetime
 
 
-class ImportResult(BaseModel):
-    imported: int
-    skipped: int
-    errors: list[str]
+class RecurringRunResult(BaseModel):
+    generated: int

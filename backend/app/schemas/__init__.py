@@ -4,6 +4,12 @@ from app.schemas.account import AccountRead
 from app.schemas.budget import BudgetCreate, BudgetProgress, BudgetRead, BudgetUpdate
 from app.schemas.category import CategoryRead
 from app.schemas.dashboard import CategoryAmount, DashboardSummary, MonthlyStats
+from app.schemas.recurring import (
+    RecurringCreate,
+    RecurringRead,
+    RecurringRunResult,
+    RecurringUpdate,
+)
 from app.schemas.transaction import (
     ImportResult,
     TransactionCreate,
@@ -21,6 +27,10 @@ __all__ = [
     "CategoryAmount",
     "DashboardSummary",
     "MonthlyStats",
+    "RecurringCreate",
+    "RecurringRead",
+    "RecurringRunResult",
+    "RecurringUpdate",
     "ImportResult",
     "TransactionCreate",
     "TransactionRead",
