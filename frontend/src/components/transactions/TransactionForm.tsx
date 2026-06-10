@@ -1,11 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 
-import type { AccountRead, CategoryRead, TransactionRead } from "@/api/client";
+import type { AccountRead, CategoryRead, TagRead, TransactionRead } from "@/api/client";
 import { useCreateTransaction, useUpdateTransaction } from "@/hooks/useTransactions";
+import { useSetTransactionTags } from "@/hooks/useTags";
 import { todayIso } from "@/lib/format";
 
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ interface Props {
   transaction?: TransactionRead;
   accounts: AccountRead[];
   categories: CategoryRead[];
+  tags?: TagRead[];
 }
 
 export function TransactionForm({
@@ -76,10 +78,15 @@ export function TransactionForm({
   transaction,
   accounts,
   categories,
+  tags = [],
 }: Props) {
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
+  const setTags = useSetTransactionTags();
   const isEdit = !!transaction;
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>(
+    transaction?.tags?.map((t) => t.id) ?? [],
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -125,6 +132,7 @@ export function TransactionForm({
           category_id: transaction.category_id?.toString() ?? "",
           subcategory_id: transaction.subcategory_id?.toString() ?? "",
         });
+        setSelectedTagIds(transaction.tags?.map((t) => t.id) ?? []);
       } else {
         form.reset({
           date: todayIso(),
@@ -137,6 +145,7 @@ export function TransactionForm({
           category_id: "",
           subcategory_id: "",
         });
+        setSelectedTagIds([]);
       }
     }
   }, [open, transaction, accounts, form]);
@@ -181,13 +190,17 @@ export function TransactionForm({
         };
 
     try {
+      let txId: number;
       if (isEdit && transaction) {
-        await update.mutateAsync({ id: transaction.id, data: payload });
+        const updated = await update.mutateAsync({ id: transaction.id, data: payload });
+        txId = updated.id;
         toast.success("Movimiento actualizado");
       } else {
-        await create.mutateAsync(payload);
+        const created = await create.mutateAsync(payload);
+        txId = created.id;
         toast.success("Movimiento creado");
       }
+      await setTags.mutateAsync({ transactionId: txId, tagIds: selectedTagIds });
       onOpenChange(false);
     } catch {
       toast.error("Error al guardar el movimiento");
@@ -402,6 +415,45 @@ export function TransactionForm({
                 </FormItem>
               )}
             />
+
+            {/* Tags */}
+            {tags.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium leading-none">Etiquetas</p>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => {
+                    const active = selectedTagIds.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedTagIds((prev) =>
+                            active ? prev.filter((id) => id !== tag.id) : [...prev, tag.id],
+                          )
+                        }
+                        className="rounded-full px-2.5 py-0.5 text-xs font-medium transition-opacity"
+                        style={
+                          tag.color
+                            ? {
+                                backgroundColor: active ? `${tag.color}33` : `${tag.color}11`,
+                                color: tag.color,
+                                border: `1px solid ${tag.color}${active ? "88" : "33"}`,
+                                opacity: active ? 1 : 0.6,
+                              }
+                            : {
+                                backgroundColor: active ? "hsl(var(--accent))" : "transparent",
+                                border: "1px solid hsl(var(--border))",
+                              }
+                        }
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

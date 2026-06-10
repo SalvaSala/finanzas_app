@@ -6,6 +6,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import TransactionType
+from app.schemas.tag import TagRead
 
 
 class TransactionCreate(BaseModel):
@@ -61,6 +62,7 @@ class TransactionRead(BaseModel):
     transfer_account_id: int | None
     recurring_id: int | None
     created_at: dt.datetime
+    tags: list[TagRead] = []
 
 
 class ImportResult(BaseModel):

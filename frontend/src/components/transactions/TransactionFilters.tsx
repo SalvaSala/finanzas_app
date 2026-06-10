@@ -1,6 +1,6 @@
 import { X, Search } from "lucide-react";
 
-import type { AccountRead, CategoryRead, ListTransactionsQuery } from "@/api/client";
+import type { AccountRead, CategoryRead, ListTransactionsQuery, TagRead } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,18 +16,20 @@ interface Props {
   onChange: (f: ListTransactionsQuery) => void;
   accounts: AccountRead[];
   categories: CategoryRead[];
+  tags?: TagRead[];
 }
 
 const ALL = "__all__";
 
-export function TransactionFilters({ filters, onChange, accounts, categories }: Props) {
+export function TransactionFilters({ filters, onChange, accounts, categories, tags = [] }: Props) {
   const parentCategories = categories.filter((c) => c.parent_id === null);
 
   const hasActiveFilters =
     filters.search ||
     filters.type ||
     filters.category_id != null ||
-    filters.account_id != null;
+    filters.account_id != null ||
+    filters.tag_id != null;
 
   function clear() {
     onChange({ year: filters.year, month: filters.month, limit: filters.limit });
@@ -101,6 +103,28 @@ export function TransactionFilters({ filters, onChange, accounts, categories }: 
           ))}
         </SelectContent>
       </Select>
+
+      {/* Tag */}
+      {tags.length > 0 && (
+        <Select
+          value={filters.tag_id != null ? String(filters.tag_id) : ALL}
+          onValueChange={(v) =>
+            onChange({ ...filters, tag_id: v === ALL ? undefined : parseInt(v) })
+          }
+        >
+          <SelectTrigger className="h-9 w-40">
+            <SelectValue placeholder="Etiqueta" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todas las etiquetas</SelectItem>
+            {tags.map((t) => (
+              <SelectItem key={t.id} value={String(t.id)}>
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       {/* Clear */}
       {hasActiveFilters && (

@@ -83,6 +83,7 @@ def list_transactions(
     category_id: int | None = None,
     account_id: int | None = None,
     search: str | None = None,
+    tag_id: int | None = None,
 ) -> list[Transaction]:
     return transaction_repo.list_(
         session,
@@ -93,6 +94,7 @@ def list_transactions(
         category_id=category_id,
         account_id=account_id,
         search=search,
+        tag_id=tag_id,
     )
 
 

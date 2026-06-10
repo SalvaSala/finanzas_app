@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { BudgetsPage } from "@/pages/BudgetsPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { RecurringPage } from "@/pages/RecurringPage";
+import { TagsPage } from "@/pages/TagsPage";
 import { TransactionsPage } from "@/pages/TransactionsPage";
 
 export function App() {
@@ -15,6 +16,7 @@ export function App() {
           <Route path="transacciones" element={<TransactionsPage />} />
           <Route path="presupuestos" element={<BudgetsPage />} />
           <Route path="recurrentes" element={<RecurringPage />} />
+          <Route path="etiquetas" element={<TagsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

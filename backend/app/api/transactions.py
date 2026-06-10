@@ -10,8 +10,10 @@ from app.core.db import get_session
 from app.models import Transaction
 from app.models.enums import TransactionType
 from app.schemas import TransactionCreate, TransactionRead, TransactionUpdate
+from app.schemas.tag import TagRead
 from app.schemas.transaction import ImportResult
 from app.services import csv_io
+from app.services import tag as tag_service
 from app.services import transaction as transaction_service
 from app.services.periods import period_range
 
@@ -26,6 +28,7 @@ def list_transactions(
     type: TransactionType | None = Query(default=None),
     category_id: int | None = Query(default=None),
     account_id: int | None = Query(default=None),
+    tag_id: int | None = Query(default=None),
     search: str | None = Query(default=None, max_length=200),
     session: Session = Depends(get_session),
 ) -> list[Transaction]:
@@ -41,6 +44,7 @@ def list_transactions(
         category_id=category_id,
         account_id=account_id,
         search=search,
+        tag_id=tag_id,
     )
 
 
@@ -99,6 +103,45 @@ async def import_transactions(
         content = raw.decode("latin-1")
     result = csv_io.import_csv(session, content)
     return ImportResult(**result.to_dict())
+
+
+@router.get("/{transaction_id}/tags", response_model=list[TagRead])
+def list_transaction_tags(
+    transaction_id: int, session: Session = Depends(get_session)
+) -> list[TagRead]:
+    tx = transaction_service.get_transaction(session, transaction_id)
+    return tx.tags  # type: ignore[return-value]
+
+
+@router.post(
+    "/{transaction_id}/tags/{tag_id}",
+    response_model=TransactionRead,
+    status_code=status.HTTP_200_OK,
+)
+def attach_tag(
+    transaction_id: int, tag_id: int, session: Session = Depends(get_session)
+) -> Transaction:
+    return tag_service.attach_tag(session, transaction_id, tag_id)
+
+
+@router.delete(
+    "/{transaction_id}/tags/{tag_id}",
+    response_model=TransactionRead,
+    status_code=status.HTTP_200_OK,
+)
+def detach_tag(
+    transaction_id: int, tag_id: int, session: Session = Depends(get_session)
+) -> Transaction:
+    return tag_service.detach_tag(session, transaction_id, tag_id)
+
+
+@router.put("/{transaction_id}/tags", response_model=TransactionRead)
+def set_tags(
+    transaction_id: int,
+    tag_ids: list[int],
+    session: Session = Depends(get_session),
+) -> Transaction:
+    return tag_service.set_tags(session, transaction_id, tag_ids)
 
 
 @router.get("/{transaction_id}", response_model=TransactionRead)

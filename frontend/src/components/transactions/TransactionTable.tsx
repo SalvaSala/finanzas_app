@@ -144,6 +144,31 @@ export function TransactionTable({ transactions, accounts, categories, onEdit }:
       ),
     },
     {
+      id: "tags",
+      header: "Etiquetas",
+      cell: ({ row }) => {
+        const tags = row.original.tags ?? [];
+        if (tags.length === 0) return <span className="text-muted-foreground">—</span>;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                style={
+                  tag.color
+                    ? { backgroundColor: `${tag.color}22`, color: tag.color, border: `1px solid ${tag.color}44` }
+                    : undefined
+                }
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
       id: "category",
       header: "Categoría",
       cell: ({ row }) => (

@@ -15,6 +15,9 @@ export type BudgetUpdate = components["schemas"]["BudgetUpdate"];
 export type BudgetProgress = components["schemas"]["BudgetProgress"];
 export type BudgetPeriod = components["schemas"]["BudgetPeriod"];
 export type MonthlyStats = components["schemas"]["MonthlyStats"];
+export type TagRead = components["schemas"]["TagRead"];
+export type TagCreate = components["schemas"]["TagCreate"];
+export type TagUpdate = components["schemas"]["TagUpdate"];
 export type RecurringRead = components["schemas"]["RecurringRead"];
 export type RecurringCreate = components["schemas"]["RecurringCreate"];
 export type RecurringUpdate = components["schemas"]["RecurringUpdate"];
@@ -152,5 +155,27 @@ export const api = {
       apiFetch<void>(`/api/recurring/${id}`, { method: "DELETE" }),
     run: () =>
       apiFetch<RecurringRunResult>("/api/recurring/run", { method: "POST" }),
+  },
+
+  tags: {
+    list: () => apiFetch<TagRead[]>("/api/tags"),
+    create: (data: TagCreate) =>
+      apiFetch<TagRead>("/api/tags", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: number, data: TagUpdate) =>
+      apiFetch<TagRead>(`/api/tags/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    delete: (id: number) => apiFetch<void>(`/api/tags/${id}`, { method: "DELETE" }),
+    attachToTransaction: (transactionId: number, tagId: number) =>
+      apiFetch<TransactionRead>(`/api/transactions/${transactionId}/tags/${tagId}`, {
+        method: "POST",
+      }),
+    detachFromTransaction: (transactionId: number, tagId: number) =>
+      apiFetch<TransactionRead>(`/api/transactions/${transactionId}/tags/${tagId}`, {
+        method: "DELETE",
+      }),
+    setOnTransaction: (transactionId: number, tagIds: number[]) =>
+      apiFetch<TransactionRead>(`/api/transactions/${transactionId}/tags`, {
+        method: "PUT",
+        body: JSON.stringify(tagIds),
+      }),
   },
 };

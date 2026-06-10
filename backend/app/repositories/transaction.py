@@ -6,7 +6,7 @@ from decimal import Decimal
 from sqlalchemy import func
 from sqlmodel import Session, col, select
 
-from app.models import Transaction
+from app.models import Transaction, transaction_tags_table
 from app.models.enums import TransactionType
 
 
@@ -42,6 +42,7 @@ def list_(
     category_id: int | None = None,
     account_id: int | None = None,
     search: str | None = None,
+    tag_id: int | None = None,
 ) -> list[Transaction]:
     """List transactions (newest first) with optional filters."""
     statement = select(Transaction)
@@ -60,6 +61,14 @@ def list_(
         )
     if search is not None and search.strip():
         statement = statement.where(col(Transaction.concept).ilike(f"%{search.strip()}%"))
+    if tag_id is not None:
+        statement = statement.where(
+            col(Transaction.id).in_(
+                select(transaction_tags_table.c.transaction_id).where(
+                    transaction_tags_table.c.tag_id == tag_id
+                )
+            )
+        )
     statement = statement.order_by(col(Transaction.date).desc(), col(Transaction.id).desc())
     if limit is not None:
         statement = statement.limit(limit)

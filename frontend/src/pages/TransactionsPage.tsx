@@ -6,6 +6,7 @@ import type { ListTransactionsQuery, TransactionRead } from "@/api/client";
 import { api } from "@/api/client";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
+import { useTags } from "@/hooks/useTags";
 import { useTransactions } from "@/hooks/useTransactions";
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { CsvImportDialog } from "@/components/transactions/CsvImportDialog";
@@ -30,6 +31,7 @@ export function TransactionsPage() {
   const { data: transactions = [], isLoading: loadingTx } = useTransactions(filters);
   const { data: accounts = [], isLoading: loadingAcc } = useAccounts();
   const { data: categories = [] } = useCategories();
+  const { data: tags = [] } = useTags();
 
   function openCreate() {
     setEditing(undefined);
@@ -104,6 +106,7 @@ export function TransactionsPage() {
         onChange={setFilters}
         accounts={accounts}
         categories={categories}
+        tags={tags}
       />
 
       <Separator />
@@ -125,6 +128,7 @@ export function TransactionsPage() {
         transaction={editing}
         accounts={accounts}
         categories={categories}
+        tags={tags}
       />
 
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />

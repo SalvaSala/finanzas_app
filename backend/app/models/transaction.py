@@ -16,6 +16,7 @@ from app.models.enums import TransactionType
 if TYPE_CHECKING:
     from app.models.account import Account
     from app.models.category import Category
+    from app.models.tag import Tag
 
 
 class Transaction(SQLModel, table=True):
@@ -55,4 +56,10 @@ class Transaction(SQLModel, table=True):
     )
     subcategory: Optional["Category"] = Relationship(
         sa_relationship_kwargs={"foreign_keys": "Transaction.subcategory_id"}
+    )
+    tags: list["Tag"] = Relationship(
+        sa_relationship_kwargs={
+            "secondary": "transaction_tags",
+            "lazy": "selectin",
+        },
     )

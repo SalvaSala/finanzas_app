@@ -10,6 +10,7 @@ from app.schemas.recurring import (
     RecurringRunResult,
     RecurringUpdate,
 )
+from app.schemas.tag import TagCreate, TagRead, TagUpdate
 from app.schemas.transaction import (
     ImportResult,
     TransactionCreate,
@@ -27,6 +28,9 @@ __all__ = [
     "CategoryAmount",
     "DashboardSummary",
     "MonthlyStats",
+    "TagCreate",
+    "TagRead",
+    "TagUpdate",
     "RecurringCreate",
     "RecurringRead",
     "RecurringRunResult",
