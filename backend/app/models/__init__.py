@@ -15,6 +15,7 @@ from app.models.enums import (
     TransactionType,
 )
 from app.models.recurring import RecurringTransaction
+from app.models.savings_goal import SavingsGoal
 from app.models.tag import Tag, transaction_tags_table
 from app.models.transaction import Transaction
 
@@ -23,6 +24,7 @@ __all__ = [
     "Budget",
     "Category",
     "RecurringTransaction",
+    "SavingsGoal",
     "Tag",
     "Transaction",
     "transaction_tags_table",

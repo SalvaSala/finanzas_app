@@ -11,6 +11,7 @@ from app.api import (
     dashboard,
     health,
     recurring,
+    savings_goals,
     tags,
     transactions,
 )
@@ -24,3 +25,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(budgets.router)
 api_router.include_router(recurring.router)
 api_router.include_router(tags.router)
+api_router.include_router(savings_goals.router)

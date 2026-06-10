@@ -23,6 +23,10 @@ export type RecurringCreate = components["schemas"]["RecurringCreate"];
 export type RecurringUpdate = components["schemas"]["RecurringUpdate"];
 export type RecurringRunResult = components["schemas"]["RecurringRunResult"];
 export type RecurrenceFrequency = components["schemas"]["RecurrenceFrequency"];
+export type SavingsGoalRead = components["schemas"]["SavingsGoalRead"];
+export type SavingsGoalCreate = components["schemas"]["SavingsGoalCreate"];
+export type SavingsGoalUpdate = components["schemas"]["SavingsGoalUpdate"];
+export type SavingsGoalContribute = components["schemas"]["SavingsGoalContribute"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
@@ -155,6 +159,28 @@ export const api = {
       apiFetch<void>(`/api/recurring/${id}`, { method: "DELETE" }),
     run: () =>
       apiFetch<RecurringRunResult>("/api/recurring/run", { method: "POST" }),
+  },
+
+  savingsGoals: {
+    list: () => apiFetch<SavingsGoalRead[]>("/api/savings-goals"),
+    get: (id: number) => apiFetch<SavingsGoalRead>(`/api/savings-goals/${id}`),
+    create: (data: SavingsGoalCreate) =>
+      apiFetch<SavingsGoalRead>("/api/savings-goals", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: number, data: SavingsGoalUpdate) =>
+      apiFetch<SavingsGoalRead>(`/api/savings-goals/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: number) =>
+      apiFetch<void>(`/api/savings-goals/${id}`, { method: "DELETE" }),
+    contribute: (id: number, data: SavingsGoalContribute) =>
+      apiFetch<SavingsGoalRead>(`/api/savings-goals/${id}/contribute`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
   },
 
   tags: {
