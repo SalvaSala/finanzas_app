@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, Target, Repeat, Tag, PiggyBank, Wand2 } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Target, Repeat, Tag, PiggyBank, Wand2, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/hooks/useTheme";
+import { Button } from "@/components/ui/button";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -13,6 +15,8 @@ const NAV = [
 ];
 
 export function AppLayout() {
+  const { theme, toggle } = useTheme();
+
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="flex w-52 flex-col border-r bg-card px-3 py-6">
@@ -37,6 +41,17 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
+        <div className="mt-auto px-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-3 text-muted-foreground"
+            onClick={toggle}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+          </Button>
+        </div>
       </aside>
       <main className="flex-1 overflow-auto p-8">
         <Outlet />
