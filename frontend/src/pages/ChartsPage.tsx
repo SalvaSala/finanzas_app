@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BarChart3 } from "lucide-react";
 
 import { useTreemap, useCalendar, useSankey } from "@/hooks/useCharts";
+import { BalanceHistoryChart } from "@/components/charts/BalanceHistoryChart";
 import { TreemapChart } from "@/components/charts/TreemapChart";
 import { CalendarHeatmap } from "@/components/charts/CalendarHeatmap";
 import { SankeyChart } from "@/components/charts/SankeyChart";
@@ -95,6 +96,15 @@ export function ChartsPage() {
       </div>
 
       <Separator />
+
+      {/* Balance history — shown first */}
+      <div className="rounded-xl border bg-card p-5">
+        <h2 className="text-base font-semibold">Evolución del balance</h2>
+        <p className="mb-4 mt-1 text-xs text-muted-foreground">
+          Balance acumulado (ingresos − gastos) a lo largo del tiempo.
+        </p>
+        <BalanceHistoryChart />
+      </div>
 
       {/* Treemap */}
       <ChartCard

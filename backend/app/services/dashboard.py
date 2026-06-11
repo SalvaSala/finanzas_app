@@ -13,6 +13,7 @@ from app.models.enums import TransactionType
 from app.repositories import category as category_repo
 from app.repositories import transaction as transaction_repo
 from app.schemas.dashboard import (
+    BalancePoint,
     CategoryAmount,
     DashboardSummary,
     DayAmount,
@@ -207,3 +208,65 @@ def get_sankey(session: Session, year: int, month: int | None) -> SankeyData:
         links.append(SankeyLink(source=pool_id, target="pool__ahorro", value=float(balance)))
 
     return SankeyData(nodes=nodes, links=links)
+
+
+def _years_ago(today: dt.date, n: int) -> dt.date:
+    try:
+        return today.replace(year=today.year - n)
+    except ValueError:
+        return today.replace(year=today.year - n, day=28)
+
+
+def get_balance_history(session: Session, period: str) -> list[BalancePoint]:
+    """Cumulative balance evolution for the given period (1M, 3M, 1A, 5A).
+
+    Resolution: daily for 1M/3M, monthly for 1A/5A.
+    Starting point is the cumulative net of all transactions before the period start.
+    """
+    today = dt.date.today()
+
+    if period == "1M":
+        start = today - dt.timedelta(days=30)
+        monthly = False
+    elif period == "3M":
+        start = today - dt.timedelta(days=90)
+        monthly = False
+    elif period == "5A":
+        start = _years_ago(today, 5)
+        monthly = True
+    else:  # "1A" (default)
+        start = _years_ago(today, 1)
+        monthly = True
+
+    opening = transaction_repo.cumulative_net_before(session, start)
+    daily_nets: dict[dt.date, Decimal] = dict(
+        transaction_repo.net_by_day(session, start, today)
+    )
+
+    if not monthly:
+        # One point per day
+        points: list[BalancePoint] = []
+        cumbal = opening
+        cursor = start
+        while cursor <= today:
+            cumbal += daily_nets.get(cursor, Decimal(0))
+            points.append(BalancePoint(date=str(cursor), balance=float(cumbal)))
+            cursor += dt.timedelta(days=1)
+        return points
+
+    # Group daily nets into calendar months
+    monthly_nets: dict[str, Decimal] = {}
+    cursor = start
+    while cursor <= today:
+        key = cursor.strftime("%Y-%m")
+        monthly_nets[key] = monthly_nets.get(key, Decimal(0)) + daily_nets.get(
+            cursor, Decimal(0)
+        )
+        cursor += dt.timedelta(days=1)
+
+    points = []
+    cumbal = opening
+    for key in sorted(monthly_nets):
+        cumbal += monthly_nets[key]
+        points.append(BalancePoint(date=f"{key}-01", balance=float(cumbal)))
+    return points

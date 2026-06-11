@@ -1,6 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 
+export function useBalanceHistory(period: string) {
+  return useQuery({
+    queryKey: ["charts", "balance-history", period],
+    queryFn: () => api.dashboard.balanceHistory(period),
+  });
+}
+
 export function useTreemap(year: number, month?: number) {
   return useQuery({
     queryKey: ["charts", "treemap", year, month],

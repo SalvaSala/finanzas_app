@@ -34,6 +34,7 @@ export type SuggestResponse = components["schemas"]["SuggestResponse"];
 export type TreemapData = components["schemas"]["TreemapData"];
 export type DayAmount = components["schemas"]["DayAmount"];
 export type SankeyData = components["schemas"]["SankeyData"];
+export type BalancePoint = components["schemas"]["BalancePoint"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
@@ -137,6 +138,8 @@ export const api = {
       if (month != null) qs.set("month", String(month));
       return apiFetch<SankeyData>(`/api/dashboard/sankey?${qs}`);
     },
+    balanceHistory: (period: string) =>
+      apiFetch<BalancePoint[]>(`/api/dashboard/balance-history?period=${period}`),
   },
 
   budgets: {

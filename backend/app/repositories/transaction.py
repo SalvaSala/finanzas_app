@@ -3,7 +3,7 @@
 import datetime as dt
 from decimal import Decimal
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlmodel import Session, col, select
 
 from app.models import Transaction, transaction_tags_table
@@ -178,3 +178,42 @@ def sum_by_day(
     )
     rows = session.exec(statement).all()
     return [(row[0], Decimal(str(row[1]))) for row in rows]
+
+
+def _net_expr() -> object:
+    """SQLAlchemy CASE expression: +amount for income, -amount for expense."""
+    return case(
+        (col(Transaction.type) == TransactionType.income, col(Transaction.amount)),
+        else_=col(Transaction.amount) * -1,
+    )
+
+
+def net_by_day(
+    session: Session,
+    start: dt.date,
+    end: dt.date,
+) -> list[tuple[dt.date, Decimal]]:
+    """Net (income − expense) per calendar day within a date range."""
+    statement = (
+        select(col(Transaction.date), func.sum(_net_expr()))
+        .where(
+            col(Transaction.type).in_([TransactionType.income, TransactionType.expense]),
+            col(Transaction.date) >= start,
+            col(Transaction.date) <= end,
+        )
+        .group_by(col(Transaction.date))
+        .order_by(col(Transaction.date))
+    )
+    rows = session.exec(statement).all()
+    return [(row[0], Decimal(str(row[1]))) for row in rows]
+
+
+def cumulative_net_before(session: Session, before_date: dt.date) -> Decimal:
+    """Cumulative net balance (income − expense) for all transactions before a given date."""
+    result = session.exec(
+        select(func.coalesce(func.sum(_net_expr()), 0)).where(
+            col(Transaction.type).in_([TransactionType.income, TransactionType.expense]),
+            col(Transaction.date) < before_date,
+        )
+    ).one()
+    return Decimal(str(result))

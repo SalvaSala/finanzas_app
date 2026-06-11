@@ -250,6 +250,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/balance-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Balance History */
+        get: operations["get_balance_history_api_dashboard_balance_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/budgets": {
         parameters: {
             query?: never;
@@ -577,6 +594,16 @@ export interface components {
          * @enum {string}
          */
         AccountType: "cash" | "bank" | "card" | "savings";
+        /**
+         * BalancePoint
+         * @description Single point in the balance history chart.
+         */
+        BalancePoint: {
+            /** Date */
+            date: string;
+            /** Balance */
+            balance: number;
+        };
         /** Body_import_transactions_api_transactions_import_csv_post */
         Body_import_transactions_api_transactions_import_csv_post: {
             /** File */
@@ -1742,6 +1769,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SankeyData"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_balance_history_api_dashboard_balance_history_get: {
+        parameters: {
+            query?: {
+                period?: "1M" | "3M" | "1A" | "5A";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalancePoint"][];
                 };
             };
             /** @description Validation Error */

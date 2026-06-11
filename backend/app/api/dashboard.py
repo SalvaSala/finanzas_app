@@ -1,13 +1,14 @@
 """Dashboard / KPIs endpoints."""
 
 import datetime as dt
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.core.db import get_session
 from app.schemas import DashboardSummary, MonthlyStats
-from app.schemas.dashboard import DayAmount, SankeyData, TreemapData
+from app.schemas.dashboard import BalancePoint, DayAmount, SankeyData, TreemapData
 from app.services import dashboard as dashboard_service
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -59,3 +60,11 @@ def get_sankey(
 ) -> SankeyData:
     resolved_year = year if year is not None else dt.date.today().year
     return dashboard_service.get_sankey(session, resolved_year, month)
+
+
+@router.get("/balance-history", response_model=list[BalancePoint])
+def get_balance_history(
+    period: Literal["1M", "3M", "1A", "5A"] = Query(default="1A"),
+    session: Session = Depends(get_session),
+) -> list[BalancePoint]:
+    return dashboard_service.get_balance_history(session, period)

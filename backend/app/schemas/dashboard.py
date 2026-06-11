@@ -92,3 +92,10 @@ class SankeyData(BaseModel):
 
     nodes: list[SankeyNode]
     links: list[SankeyLink]
+
+
+class BalancePoint(BaseModel):
+    """Single point in the balance history chart."""
+
+    date: str  # "YYYY-MM-DD"
+    balance: float
