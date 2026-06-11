@@ -199,6 +199,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/treemap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Treemap */
+        get: operations["get_treemap_api_dashboard_treemap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Calendar */
+        get: operations["get_calendar_api_dashboard_calendar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/sankey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Sankey */
+        get: operations["get_sankey_api_dashboard_sankey_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/budgets": {
         parameters: {
             query?: never;
@@ -452,6 +503,57 @@ export interface paths {
         patch: operations["update_rule_api_categorization_rules__rule_id__patch"];
         trace?: never;
     };
+    "/api/reports/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Pdf */
+        get: operations["download_pdf_api_reports_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Backup */
+        get: operations["download_backup_api_backup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backup/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Backup */
+        post: operations["restore_backup_api_backup_restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -477,6 +579,11 @@ export interface components {
         AccountType: "cash" | "bank" | "card" | "savings";
         /** Body_import_transactions_api_transactions_import_csv_post */
         Body_import_transactions_api_transactions_import_csv_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_restore_backup_api_backup_restore_post */
+        Body_restore_backup_api_backup_restore_post: {
             /** File */
             file: string;
         };
@@ -631,6 +738,16 @@ export interface components {
             /** Income By Category */
             income_by_category: components["schemas"]["CategoryAmount"][];
         };
+        /**
+         * DayAmount
+         * @description Daily expense total for the calendar heatmap.
+         */
+        DayAmount: {
+            /** Day */
+            day: string;
+            /** Value */
+            value: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -772,6 +889,38 @@ export interface components {
             end_date?: string | null;
             /** Active */
             active?: boolean | null;
+        };
+        /**
+         * SankeyData
+         * @description Full Sankey diagram: nodes + links.
+         */
+        SankeyData: {
+            /** Nodes */
+            nodes: components["schemas"]["SankeyNode"][];
+            /** Links */
+            links: components["schemas"]["SankeyLink"][];
+        };
+        /**
+         * SankeyLink
+         * @description Directed link between two Sankey nodes.
+         */
+        SankeyLink: {
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * SankeyNode
+         * @description Node in the Sankey diagram.
+         */
+        SankeyNode: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
         };
         /** SavingsGoalContribute */
         SavingsGoalContribute: {
@@ -955,6 +1104,49 @@ export interface components {
             account_id?: number | null;
             /** Transfer Account Id */
             transfer_account_id?: number | null;
+        };
+        /**
+         * TreemapBranch
+         * @description Branch node (category) for the treemap; may contain leaf children.
+         */
+        TreemapBranch: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Color */
+            color?: string | null;
+            /**
+             * Children
+             * @default []
+             */
+            children: components["schemas"]["TreemapLeaf"][];
+            /** Value */
+            value?: number | null;
+        };
+        /**
+         * TreemapData
+         * @description Root node for the expense treemap.
+         */
+        TreemapData: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Children */
+            children: components["schemas"]["TreemapBranch"][];
+        };
+        /**
+         * TreemapLeaf
+         * @description Leaf node (subcategory or category without subcategories) for the treemap.
+         */
+        TreemapLeaf: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Value */
+            value: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1455,6 +1647,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonthlyStats"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_treemap_api_dashboard_treemap_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+                month?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TreemapData"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_calendar_api_dashboard_calendar_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayAmount"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sankey_api_dashboard_sankey_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+                month?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SankeyData"];
                 };
             };
             /** @description Validation Error */
@@ -2313,6 +2600,93 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategorizationRuleRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_pdf_api_reports_pdf_get: {
+        parameters: {
+            query: {
+                year: number;
+                month?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_backup_api_backup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    restore_backup_api_backup_restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_restore_backup_api_backup_restore_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Validation Error */

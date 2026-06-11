@@ -34,3 +34,61 @@ class MonthlyStats(BaseModel):
     expense: Decimal
     balance: Decimal
     cumulative_balance: Decimal
+
+
+# ── Advanced charts ───────────────────────────────────────────────────────────
+
+
+class TreemapLeaf(BaseModel):
+    """Leaf node (subcategory or category without subcategories) for the treemap."""
+
+    id: str
+    name: str
+    value: float
+
+
+class TreemapBranch(BaseModel):
+    """Branch node (category) for the treemap; may contain leaf children."""
+
+    id: str
+    name: str
+    color: str | None = None
+    children: list[TreemapLeaf] = []
+    value: float | None = None
+
+
+class TreemapData(BaseModel):
+    """Root node for the expense treemap."""
+
+    id: str
+    name: str
+    children: list[TreemapBranch]
+
+
+class DayAmount(BaseModel):
+    """Daily expense total for the calendar heatmap."""
+
+    day: str  # ISO date "YYYY-MM-DD"
+    value: float
+
+
+class SankeyNode(BaseModel):
+    """Node in the Sankey diagram."""
+
+    id: str
+    label: str
+
+
+class SankeyLink(BaseModel):
+    """Directed link between two Sankey nodes."""
+
+    source: str
+    target: str
+    value: float
+
+
+class SankeyData(BaseModel):
+    """Full Sankey diagram: nodes + links."""
+
+    nodes: list[SankeyNode]
+    links: list[SankeyLink]

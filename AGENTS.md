@@ -142,7 +142,7 @@ para no refactorizar después (detalle en `packaging/README.md`):
 
 - [x] **Fase 1 (MVP):** andamiaje, modelo + migración, datos semilla, CRUD movimientos, dashboard (KPIs + donut + tabla), selector año/mes.
 - [x] **Fase 2:** transferencias, presupuestos, filtros/búsqueda, import/export CSV, gráficos adicionales.
-- [ ] **Fase 3:** ~~recurrentes~~, ~~etiquetas~~, ~~objetivos de ahorro~~, ~~reglas de autocategorización~~, ~~modo oscuro~~, ~~informes PDF~~, ~~backup/restore~~, gráficos avanzados.
+- [x] **Fase 3:** ~~recurrentes~~, ~~etiquetas~~, ~~objetivos de ahorro~~, ~~reglas de autocategorización~~, ~~modo oscuro~~, ~~informes PDF~~, ~~backup/restore~~, ~~gráficos avanzados~~.
 - [ ] **Fase 4 (nube):** auth/multiusuario, PostgreSQL, despliegue, sincronización.
 
 ## Referencias

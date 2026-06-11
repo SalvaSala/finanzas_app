@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BudgetsPage } from "@/pages/BudgetsPage";
 import { CategorizationRulesPage } from "@/pages/CategorizationRulesPage";
+import { ChartsPage } from "@/pages/ChartsPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { RecurringPage } from "@/pages/RecurringPage";
 import { SavingsGoalsPage } from "@/pages/SavingsGoalsPage";
@@ -22,6 +23,7 @@ export function App() {
           <Route path="recurrentes" element={<RecurringPage />} />
           <Route path="etiquetas" element={<TagsPage />} />
           <Route path="reglas" element={<CategorizationRulesPage />} />
+          <Route path="graficos" element={<ChartsPage />} />
           <Route path="ajustes" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

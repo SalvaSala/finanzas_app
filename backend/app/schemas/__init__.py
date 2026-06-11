@@ -3,7 +3,18 @@
 from app.schemas.account import AccountRead
 from app.schemas.budget import BudgetCreate, BudgetProgress, BudgetRead, BudgetUpdate
 from app.schemas.category import CategoryRead
-from app.schemas.dashboard import CategoryAmount, DashboardSummary, MonthlyStats
+from app.schemas.dashboard import (
+    CategoryAmount,
+    DashboardSummary,
+    DayAmount,
+    MonthlyStats,
+    SankeyData,
+    SankeyLink,
+    SankeyNode,
+    TreemapBranch,
+    TreemapData,
+    TreemapLeaf,
+)
 from app.schemas.recurring import (
     RecurringCreate,
     RecurringRead,
@@ -27,7 +38,11 @@ __all__ = [
     "CategoryRead",
     "CategoryAmount",
     "DashboardSummary",
+    "DayAmount",
     "MonthlyStats",
+    "SankeyData",
+    "SankeyLink",
+    "SankeyNode",
     "TagCreate",
     "TagRead",
     "TagUpdate",
@@ -39,4 +54,7 @@ __all__ = [
     "TransactionCreate",
     "TransactionRead",
     "TransactionUpdate",
+    "TreemapBranch",
+    "TreemapData",
+    "TreemapLeaf",
 ]

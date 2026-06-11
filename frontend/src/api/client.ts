@@ -31,6 +31,9 @@ export type CategorizationRuleRead = components["schemas"]["CategorizationRuleRe
 export type CategorizationRuleCreate = components["schemas"]["CategorizationRuleCreate"];
 export type CategorizationRuleUpdate = components["schemas"]["CategorizationRuleUpdate"];
 export type SuggestResponse = components["schemas"]["SuggestResponse"];
+export type TreemapData = components["schemas"]["TreemapData"];
+export type DayAmount = components["schemas"]["DayAmount"];
+export type SankeyData = components["schemas"]["SankeyData"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
@@ -122,6 +125,18 @@ export const api = {
     },
     monthly: (year: number) =>
       apiFetch<MonthlyStats[]>(`/api/dashboard/monthly?year=${year}`),
+    treemap: (year: number, month?: number) => {
+      const qs = new URLSearchParams({ year: String(year) });
+      if (month != null) qs.set("month", String(month));
+      return apiFetch<TreemapData>(`/api/dashboard/treemap?${qs}`);
+    },
+    calendar: (year: number) =>
+      apiFetch<DayAmount[]>(`/api/dashboard/calendar?year=${year}`),
+    sankey: (year: number, month?: number) => {
+      const qs = new URLSearchParams({ year: String(year) });
+      if (month != null) qs.set("month", String(month));
+      return apiFetch<SankeyData>(`/api/dashboard/sankey?${qs}`);
+    },
   },
 
   budgets: {

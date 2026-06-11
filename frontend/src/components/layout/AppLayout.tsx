@@ -1,5 +1,17 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, Target, Repeat, Tag, PiggyBank, Wand2, Sun, Moon, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  Target,
+  Repeat,
+  Tag,
+  PiggyBank,
+  Wand2,
+  BarChart3,
+  Sun,
+  Moon,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
@@ -12,6 +24,7 @@ const NAV = [
   { to: "/recurrentes", label: "Recurrentes", icon: Repeat },
   { to: "/etiquetas", label: "Etiquetas", icon: Tag },
   { to: "/reglas", label: "Reglas auto", icon: Wand2 },
+  { to: "/graficos", label: "Gráficos", icon: BarChart3 },
 ];
 
 export function AppLayout() {
