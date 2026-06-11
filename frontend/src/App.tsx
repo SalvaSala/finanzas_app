@@ -6,6 +6,7 @@ import { CategorizationRulesPage } from "@/pages/CategorizationRulesPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { RecurringPage } from "@/pages/RecurringPage";
 import { SavingsGoalsPage } from "@/pages/SavingsGoalsPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import { TagsPage } from "@/pages/TagsPage";
 import { TransactionsPage } from "@/pages/TransactionsPage";
 
@@ -21,6 +22,7 @@ export function App() {
           <Route path="recurrentes" element={<RecurringPage />} />
           <Route path="etiquetas" element={<TagsPage />} />
           <Route path="reglas" element={<CategorizationRulesPage />} />
+          <Route path="ajustes" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.api import (
     accounts,
+    backup,
     budgets,
     categories,
     categorization_rules,
@@ -30,3 +31,4 @@ api_router.include_router(tags.router)
 api_router.include_router(savings_goals.router)
 api_router.include_router(categorization_rules.router)
 api_router.include_router(reports.router)
+api_router.include_router(backup.router)
