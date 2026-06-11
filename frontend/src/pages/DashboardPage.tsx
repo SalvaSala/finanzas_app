@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FileDown } from "lucide-react";
 
 import { useDashboard, useDashboardMonthly } from "@/hooks/useDashboard";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -10,6 +11,7 @@ import { ExpenseDonut } from "@/components/dashboard/ExpenseDonut";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { MonthlyBarChart } from "@/components/dashboard/MonthlyBarChart";
 import { BalanceEvolutionChart } from "@/components/dashboard/BalanceEvolutionChart";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 const now = new Date();
@@ -26,12 +28,27 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Resumen financiero · {month ? `mes ${month} / ` : ""}
-          {year}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Resumen financiero · {month ? `mes ${month} / ` : ""}
+            {year}
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+        >
+          <a
+            href={`/api/reports/pdf?year=${year}${month != null ? `&month=${month}` : ""}`}
+            download
+          >
+            <FileDown className="mr-2 h-4 w-4" />
+            Descargar PDF
+          </a>
+        </Button>
       </div>
 
       {/* Period selector */}
