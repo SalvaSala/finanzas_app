@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -63,10 +63,17 @@ export function BalanceHistoryChart() {
   const cardBg = isDark ? "#1f2937" : "#ffffff";
   const borderColor = isDark ? "#374151" : "#e5e7eb";
 
-  // Positive balance → green, negative → red
-  const lastBalance = data.length > 0 ? data[data.length - 1].balance : 0;
-  const color = lastBalance >= 0 ? "#22c55e" : "#ef4444";
-  const gradientId = `balGrad-${period}`;
+  // Split into positive/negative series for dual coloring
+  const processedData = useMemo(
+    () =>
+      data.map((d) => ({
+        date: d.date,
+        balance: d.balance,
+        positive: Math.max(d.balance, 0),
+        negative: Math.min(d.balance, 0),
+      })),
+    [data],
+  );
 
   return (
     <div className="space-y-4">
@@ -98,11 +105,15 @@ export function BalanceHistoryChart() {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <AreaChart data={processedData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.25} />
-                <stop offset="95%" stopColor={color} stopOpacity={0} />
+              <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0} />
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.25} />
               </linearGradient>
             </defs>
 
@@ -128,26 +139,51 @@ export function BalanceHistoryChart() {
             <ReferenceLine y={0} stroke={gridColor} strokeWidth={1} />
 
             <Tooltip
-              formatter={(value) => [fmtEur(value as number), "Balance acumulado"]}
-              labelFormatter={(label) => formatTooltipLabel(label as string, period)}
-              contentStyle={{
-                background: cardBg,
-                border: `1px solid ${borderColor}`,
-                borderRadius: "8px",
-                fontSize: 12,
-                color: isDark ? "#f9fafb" : "#111827",
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                const balance = (payload[0]?.payload as { balance: number })?.balance ?? 0;
+                return (
+                  <div
+                    style={{
+                      background: cardBg,
+                      border: `1px solid ${borderColor}`,
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      color: isDark ? "#f9fafb" : "#111827",
+                    }}
+                  >
+                    <div style={{ marginBottom: 4, color: tickColor }}>
+                      {formatTooltipLabel(label as string, period)}
+                    </div>
+                    <div style={{ fontWeight: 600, color: balance < 0 ? "#ef4444" : "#22c55e" }}>
+                      {fmtEur(balance)}
+                    </div>
+                  </div>
+                );
               }}
-              cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 4" }}
+              cursor={{ stroke: gridColor, strokeWidth: 1, strokeDasharray: "4 4" }}
             />
 
             <Area
               type="monotone"
-              dataKey="balance"
-              stroke={color}
+              dataKey="positive"
+              stroke="#22c55e"
               strokeWidth={2}
-              fill={`url(#${gradientId})`}
+              fill="url(#greenGrad)"
               dot={false}
-              activeDot={{ r: 4, fill: color, strokeWidth: 0 }}
+              activeDot={false}
+              isAnimationActive={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="negative"
+              stroke="#ef4444"
+              strokeWidth={2}
+              fill="url(#redGrad)"
+              dot={false}
+              activeDot={false}
+              isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>
