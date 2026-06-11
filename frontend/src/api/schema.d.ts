@@ -398,6 +398,60 @@ export interface paths {
         patch: operations["update_goal_api_savings_goals__goal_id__patch"];
         trace?: never;
     };
+    "/api/categorization-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Rules */
+        get: operations["list_rules_api_categorization_rules_get"];
+        put?: never;
+        /** Create Rule */
+        post: operations["create_rule_api_categorization_rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/categorization-rules/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggest */
+        get: operations["suggest_api_categorization_rules_suggest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/categorization-rules/{rule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Rule */
+        get: operations["get_rule_api_categorization_rules__rule_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Rule */
+        delete: operations["delete_rule_api_categorization_rules__rule_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Rule */
+        patch: operations["update_rule_api_categorization_rules__rule_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -476,6 +530,53 @@ export interface components {
             /** Amount */
             amount?: number | string | null;
             period?: components["schemas"]["BudgetPeriod"] | null;
+        };
+        /** CategorizationRuleCreate */
+        CategorizationRuleCreate: {
+            /** Pattern */
+            pattern: string;
+            /** Category Id */
+            category_id: number;
+            /** Subcategory Id */
+            subcategory_id?: number | null;
+            /**
+             * Priority
+             * @default 0
+             */
+            priority: number;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+        };
+        /** CategorizationRuleRead */
+        CategorizationRuleRead: {
+            /** Id */
+            id: number;
+            /** Pattern */
+            pattern: string;
+            /** Category Id */
+            category_id: number;
+            /** Subcategory Id */
+            subcategory_id: number | null;
+            /** Priority */
+            priority: number;
+            /** Enabled */
+            enabled: boolean;
+        };
+        /** CategorizationRuleUpdate */
+        CategorizationRuleUpdate: {
+            /** Pattern */
+            pattern?: string | null;
+            /** Category Id */
+            category_id?: number | null;
+            /** Subcategory Id */
+            subcategory_id?: number | null;
+            /** Priority */
+            priority?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
         };
         /**
          * CategoryAmount
@@ -731,6 +832,18 @@ export interface components {
             deadline?: string | null;
             /** Color */
             color?: string | null;
+        };
+        /**
+         * SuggestResponse
+         * @description Returned by the suggest endpoint when a rule matches.
+         */
+        SuggestResponse: {
+            /** Rule Id */
+            rule_id: number;
+            /** Category Id */
+            category_id: number;
+            /** Subcategory Id */
+            subcategory_id: number | null;
         };
         /** TagCreate */
         TagCreate: {
@@ -2021,6 +2134,185 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SavingsGoalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_rules_api_categorization_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategorizationRuleRead"][];
+                };
+            };
+        };
+    };
+    create_rule_api_categorization_rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategorizationRuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategorizationRuleRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_api_categorization_rules_suggest_get: {
+        parameters: {
+            query: {
+                concept: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestResponse"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_rule_api_categorization_rules__rule_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategorizationRuleRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_rule_api_categorization_rules__rule_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_rule_api_categorization_rules__rule_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategorizationRuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategorizationRuleRead"];
                 };
             };
             /** @description Validation Error */

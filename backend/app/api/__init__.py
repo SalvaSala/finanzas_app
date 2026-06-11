@@ -8,6 +8,7 @@ from app.api import (
     accounts,
     budgets,
     categories,
+    categorization_rules,
     dashboard,
     health,
     recurring,
@@ -26,3 +27,4 @@ api_router.include_router(budgets.router)
 api_router.include_router(recurring.router)
 api_router.include_router(tags.router)
 api_router.include_router(savings_goals.router)
+api_router.include_router(categorization_rules.router)

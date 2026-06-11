@@ -7,6 +7,7 @@ from sqlmodel import Session
 from app.models import Transaction
 from app.models.enums import TransactionType
 from app.repositories import account as account_repo
+from app.repositories import categorization_rule as rule_repo
 from app.repositories import category as category_repo
 from app.repositories import transaction as transaction_repo
 from app.schemas.transaction import TransactionCreate, TransactionUpdate
@@ -55,15 +56,25 @@ def _validate_refs(
 
 
 def create_transaction(session: Session, data: TransactionCreate) -> Transaction:
+    dump = data.model_dump()
+
+    # Auto-categorize when concept is provided and no category was set manually.
+    if data.category_id is None and data.concept:
+        rule = rule_repo.find_match(session, data.concept)
+        if rule is not None:
+            dump["category_id"] = rule.category_id
+            if data.subcategory_id is None:
+                dump["subcategory_id"] = rule.subcategory_id
+
     _validate_refs(
         session,
         transaction_type=data.type,
         account_id=data.account_id,
         transfer_account_id=data.transfer_account_id,
-        category_id=data.category_id,
-        subcategory_id=data.subcategory_id,
+        category_id=dump.get("category_id"),
+        subcategory_id=dump.get("subcategory_id"),
     )
-    transaction = Transaction(**data.model_dump())
+    transaction = Transaction(**dump)
     return transaction_repo.create(session, transaction)
 
 

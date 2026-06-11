@@ -27,6 +27,10 @@ export type SavingsGoalRead = components["schemas"]["SavingsGoalRead"];
 export type SavingsGoalCreate = components["schemas"]["SavingsGoalCreate"];
 export type SavingsGoalUpdate = components["schemas"]["SavingsGoalUpdate"];
 export type SavingsGoalContribute = components["schemas"]["SavingsGoalContribute"];
+export type CategorizationRuleRead = components["schemas"]["CategorizationRuleRead"];
+export type CategorizationRuleCreate = components["schemas"]["CategorizationRuleCreate"];
+export type CategorizationRuleUpdate = components["schemas"]["CategorizationRuleUpdate"];
+export type SuggestResponse = components["schemas"]["SuggestResponse"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
@@ -181,6 +185,26 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
+  },
+
+  categorizationRules: {
+    list: () => apiFetch<CategorizationRuleRead[]>("/api/categorization-rules"),
+    create: (data: CategorizationRuleCreate) =>
+      apiFetch<CategorizationRuleRead>("/api/categorization-rules", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: number, data: CategorizationRuleUpdate) =>
+      apiFetch<CategorizationRuleRead>(`/api/categorization-rules/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: number) =>
+      apiFetch<void>(`/api/categorization-rules/${id}`, { method: "DELETE" }),
+    suggest: (concept: string) =>
+      apiFetch<SuggestResponse | null>(
+        `/api/categorization-rules/suggest?concept=${encodeURIComponent(concept)}`,
+      ),
   },
 
   tags: {
