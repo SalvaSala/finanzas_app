@@ -63,17 +63,22 @@ export function BalanceHistoryChart() {
   const cardBg = isDark ? "#1f2937" : "#ffffff";
   const borderColor = isDark ? "#374151" : "#e5e7eb";
 
-  // Split into positive/negative series for dual coloring
-  const processedData = useMemo(
-    () =>
-      data.map((d) => ({
-        date: d.date,
-        balance: d.balance,
-        positive: Math.max(d.balance, 0),
-        negative: Math.min(d.balance, 0),
-      })),
-    [data],
-  );
+  // Compute where y=0 falls in the gradient (top=0, bottom=1)
+  const { hasMixed, allNeg, zeroOffset } = useMemo(() => {
+    if (!data.length) return { hasMixed: false, allNeg: false, zeroOffset: "0%" };
+    const min = Math.min(...data.map((d) => d.balance));
+    const max = Math.max(...data.map((d) => d.balance));
+    const mixed = min < 0 && max > 0;
+    const neg = max <= 0;
+    // gradient y=0 → top of chart (max value), y=1 → bottom (min value)
+    const frac = mixed ? max / (max - min) : 0;
+    return { hasMixed: mixed, allNeg: neg, zeroOffset: `${(frac * 100).toFixed(2)}%` };
+  }, [data]);
+
+  // Single stroke color or gradient URL when crossing zero
+  const strokeColor = allNeg ? "#ef4444" : hasMixed ? "url(#strokeGrad)" : "#22c55e";
+  const lastBal = data[data.length - 1]?.balance ?? 0;
+  const dotColor = lastBal < 0 ? "#ef4444" : "#22c55e";
 
   return (
     <div className="space-y-4">
@@ -105,16 +110,35 @@ export function BalanceHistoryChart() {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={processedData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ef4444" stopOpacity={0} />
-                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.25} />
-              </linearGradient>
+              {/* Fill gradient */}
+              {hasMixed ? (
+                <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#22c55e" stopOpacity={0.2} />
+                  <stop offset={zeroOffset} stopColor="#22c55e" stopOpacity={0} />
+                  <stop offset={zeroOffset} stopColor="#ef4444" stopOpacity={0} />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0.2} />
+                </linearGradient>
+              ) : allNeg ? (
+                <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
+                </linearGradient>
+              ) : (
+                <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+              )}
+
+              {/* Stroke gradient — only when crossing zero */}
+              {hasMixed && (
+                <linearGradient id="strokeGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset={zeroOffset} stopColor="#22c55e" />
+                  <stop offset={zeroOffset} stopColor="#ef4444" />
+                </linearGradient>
+              )}
             </defs>
 
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
@@ -167,23 +191,12 @@ export function BalanceHistoryChart() {
 
             <Area
               type="monotone"
-              dataKey="positive"
-              stroke="#22c55e"
+              dataKey="balance"
+              stroke={strokeColor}
               strokeWidth={2}
-              fill="url(#greenGrad)"
+              fill="url(#fillGrad)"
               dot={false}
-              activeDot={false}
-              isAnimationActive={false}
-            />
-            <Area
-              type="monotone"
-              dataKey="negative"
-              stroke="#ef4444"
-              strokeWidth={2}
-              fill="url(#redGrad)"
-              dot={false}
-              activeDot={false}
-              isAnimationActive={false}
+              activeDot={{ r: 4, fill: dotColor, strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>
