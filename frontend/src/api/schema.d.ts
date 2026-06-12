@@ -760,6 +760,12 @@ export interface components {
             expense: string;
             /** Balance */
             balance: string;
+            /** Income Change */
+            income_change?: number | null;
+            /** Expense Change */
+            expense_change?: number | null;
+            /** Balance Change */
+            balance_change?: number | null;
             /** Expense By Category */
             expense_by_category: components["schemas"]["CategoryAmount"][];
             /** Income By Category */

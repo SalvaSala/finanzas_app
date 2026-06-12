@@ -30,11 +30,37 @@ from app.services.periods import period_range
 UNCATEGORIZED_LABEL = "Sin categoría"
 
 
+def _pct_change(current: Decimal, previous: Decimal) -> float | None:
+    if previous == 0:
+        return None
+    return round(float((current - previous) / abs(previous) * 100), 1)
+
+
+def _prior_period(year: int, month: int | None) -> tuple[int, int | None]:
+    if month is None:
+        return year - 1, None
+    if month == 1:
+        return year - 1, 12
+    return year, month - 1
+
+
 def get_summary(session: Session, year: int, month: int | None) -> DashboardSummary:
     start, end = period_range(year, month)
 
     income = transaction_repo.total_by_type(session, TransactionType.income, start, end)
     expense = transaction_repo.total_by_type(session, TransactionType.expense, start, end)
+
+    # Prior period for % variation
+    prior_year, prior_month = _prior_period(year, month)
+    prior_start, prior_end = period_range(prior_year, prior_month)
+    prior_income = transaction_repo.total_by_type(
+        session, TransactionType.income, prior_start, prior_end
+    )
+    prior_expense = transaction_repo.total_by_type(
+        session, TransactionType.expense, prior_start, prior_end
+    )
+    balance = income - expense
+    prior_balance = prior_income - prior_expense
 
     categories = {category.id: category for category in category_repo.list_all(session)}
 
@@ -61,7 +87,10 @@ def get_summary(session: Session, year: int, month: int | None) -> DashboardSumm
         month=month,
         income=income,
         expense=expense,
-        balance=Decimal(income - expense),
+        balance=Decimal(balance),
+        income_change=_pct_change(income, prior_income),
+        expense_change=_pct_change(expense, prior_expense),
+        balance_change=_pct_change(balance, prior_balance),
         expense_by_category=breakdown(TransactionType.expense),
         income_by_category=breakdown(TransactionType.income),
     )

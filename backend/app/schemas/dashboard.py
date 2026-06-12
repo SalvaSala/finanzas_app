@@ -22,6 +22,9 @@ class DashboardSummary(BaseModel):
     income: Decimal
     expense: Decimal
     balance: Decimal
+    income_change: float | None = None   # % vs prior period (None when no prior data)
+    expense_change: float | None = None
+    balance_change: float | None = None
     expense_by_category: list[CategoryAmount]
     income_by_category: list[CategoryAmount]
 

@@ -67,9 +67,9 @@ export function DashboardPage() {
         <>
           {/* KPI cards */}
           <div className="grid grid-cols-3 gap-4">
-            <KpiCard title="Ingresos" amount={summary.income} variant="income" />
-            <KpiCard title="Gastos" amount={summary.expense} variant="expense" />
-            <KpiCard title="Balance" amount={summary.balance} variant="balance" />
+            <KpiCard title="Ingresos" amount={summary.income} variant="income" change={summary.income_change} />
+            <KpiCard title="Gastos" amount={summary.expense} variant="expense" change={summary.expense_change} />
+            <KpiCard title="Balance" amount={summary.balance} variant="balance" change={summary.balance_change} />
           </div>
 
           {/* Donuts + recent transactions */}
