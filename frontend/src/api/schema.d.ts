@@ -1841,6 +1841,7 @@ export interface operations {
             query?: {
                 year?: number | null;
                 month?: number | null;
+                type?: "expense" | "income";
             };
             header?: never;
             path: {

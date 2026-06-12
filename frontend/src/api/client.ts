@@ -140,8 +140,13 @@ export const api = {
     },
     balanceHistory: (period: string) =>
       apiFetch<BalancePoint[]>(`/api/dashboard/balance-history?period=${period}`),
-    categoryBreakdown: (categoryId: number, year: number, month?: number) => {
-      const qs = new URLSearchParams({ year: String(year) });
+    categoryBreakdown: (
+      categoryId: number,
+      year: number,
+      month?: number,
+      type: "expense" | "income" = "expense",
+    ) => {
+      const qs = new URLSearchParams({ year: String(year), type });
       if (month != null) qs.set("month", String(month));
       return apiFetch<CategoryAmount[]>(
         `/api/dashboard/categories/${categoryId}/breakdown?${qs}`,

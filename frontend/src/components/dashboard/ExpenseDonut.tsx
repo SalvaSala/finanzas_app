@@ -27,6 +27,7 @@ interface Props {
   year: number;
   month?: number;
   title?: string;
+  type?: "expense" | "income";
 }
 
 function makeSectorShape(chartData: ChartEntry[], clickable: boolean) {
@@ -142,19 +143,25 @@ function DonutView({
 
       {onDrill && items.length > 0 && (
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          Haz clic en un segmento para ver subcategorías
+          Clic en un segmento para ver subcategorías
         </p>
       )}
     </div>
   );
 }
 
-export function ExpenseDonut({ data, year, month, title = "Gastos por categoría" }: Props) {
+export function ExpenseDonut({
+  data,
+  year,
+  month,
+  title = "Gastos por categoría",
+  type = "expense",
+}: Props) {
   const [drilled, setDrilled] = useState<{ id: number; name: string } | null>(null);
 
   const { data: subData, isLoading: subLoading } = useQuery({
-    queryKey: ["dashboard", "category-breakdown", drilled?.id, year, month],
-    queryFn: () => api.dashboard.categoryBreakdown(drilled!.id, year, month),
+    queryKey: ["dashboard", "category-breakdown", drilled?.id, year, month, type],
+    queryFn: () => api.dashboard.categoryBreakdown(drilled!.id, year, month, type),
     enabled: drilled !== null,
   });
 

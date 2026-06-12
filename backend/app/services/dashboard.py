@@ -97,13 +97,20 @@ def get_summary(session: Session, year: int, month: int | None) -> DashboardSumm
 
 
 def get_subcategory_breakdown(
-    session: Session, year: int, month: int | None, category_id: int
+    session: Session,
+    year: int,
+    month: int | None,
+    category_id: int,
+    transaction_type_str: str = "expense",
 ) -> list[CategoryAmount]:
-    """Expense breakdown by subcategory for a given parent category and period."""
+    """Breakdown by subcategory for a given parent category and period."""
     start, end = period_range(year, month)
     categories = {c.id: c for c in category_repo.list_all(session)}
+    tx_type = (
+        TransactionType.income if transaction_type_str == "income" else TransactionType.expense
+    )
     rows = transaction_repo.sum_subcategories_for_category(
-        session, TransactionType.expense, start, end, category_id
+        session, tx_type, start, end, category_id
     )
     items = [
         CategoryAmount(

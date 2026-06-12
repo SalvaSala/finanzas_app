@@ -75,7 +75,10 @@ def get_subcategory_breakdown(
     category_id: int,
     year: int | None = Query(default=None),
     month: int | None = Query(default=None, ge=1, le=12),
+    type: Literal["expense", "income"] = Query(default="expense"),
     session: Session = Depends(get_session),
 ) -> list[CategoryAmount]:
     resolved_year = year if year is not None else dt.date.today().year
-    return dashboard_service.get_subcategory_breakdown(session, resolved_year, month, category_id)
+    return dashboard_service.get_subcategory_breakdown(
+        session, resolved_year, month, category_id, str(type)
+    )
