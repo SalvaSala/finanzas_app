@@ -267,6 +267,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/categories/{category_id}/breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Subcategory Breakdown */
+        get: operations["get_subcategory_breakdown_api_dashboard_categories__category_id__breakdown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/budgets": {
         parameters: {
             query?: never;
@@ -1806,6 +1823,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BalancePoint"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_subcategory_breakdown_api_dashboard_categories__category_id__breakdown_get: {
+        parameters: {
+            query?: {
+                year?: number | null;
+                month?: number | null;
+            };
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryAmount"][];
                 };
             };
             /** @description Validation Error */

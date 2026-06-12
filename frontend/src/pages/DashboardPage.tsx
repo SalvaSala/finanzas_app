@@ -75,7 +75,7 @@ export function DashboardPage() {
           {/* Donuts + recent transactions */}
           <div className="grid grid-cols-2 gap-6">
             <div className="rounded-xl border bg-card p-5">
-              <ExpenseDonut data={summary.expense_by_category} />
+              <ExpenseDonut data={summary.expense_by_category} year={year} month={month} />
             </div>
             <div className="rounded-xl border bg-card p-5">
               <RecentTransactions transactions={recentTx} categories={categories} />

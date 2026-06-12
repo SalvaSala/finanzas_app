@@ -156,6 +156,31 @@ def sum_by_category_subcategory(
     return [(row[0], row[1], Decimal(str(row[2]))) for row in rows]
 
 
+def sum_subcategories_for_category(
+    session: Session,
+    transaction_type: TransactionType,
+    start: dt.date,
+    end: dt.date,
+    category_id: int,
+) -> list[tuple[int | None, Decimal]]:
+    """Total grouped by subcategory_id for a specific parent category."""
+    statement = (
+        select(
+            Transaction.subcategory_id,
+            func.coalesce(func.sum(Transaction.amount), 0),
+        )
+        .where(
+            col(Transaction.type) == transaction_type,
+            col(Transaction.category_id) == category_id,
+            col(Transaction.date) >= start,
+            col(Transaction.date) <= end,
+        )
+        .group_by(col(Transaction.subcategory_id))
+    )
+    rows = session.exec(statement).all()
+    return [(row[0], Decimal(str(row[1]))) for row in rows]
+
+
 def sum_by_day(
     session: Session,
     transaction_type: TransactionType,

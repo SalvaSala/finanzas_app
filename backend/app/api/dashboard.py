@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.core.db import get_session
-from app.schemas import DashboardSummary, MonthlyStats
+from app.schemas import CategoryAmount, DashboardSummary, MonthlyStats
 from app.schemas.dashboard import BalancePoint, DayAmount, SankeyData, TreemapData
 from app.services import dashboard as dashboard_service
 
@@ -68,3 +68,14 @@ def get_balance_history(
     session: Session = Depends(get_session),
 ) -> list[BalancePoint]:
     return dashboard_service.get_balance_history(session, period)
+
+
+@router.get("/categories/{category_id}/breakdown", response_model=list[CategoryAmount])
+def get_subcategory_breakdown(
+    category_id: int,
+    year: int | None = Query(default=None),
+    month: int | None = Query(default=None, ge=1, le=12),
+    session: Session = Depends(get_session),
+) -> list[CategoryAmount]:
+    resolved_year = year if year is not None else dt.date.today().year
+    return dashboard_service.get_subcategory_breakdown(session, resolved_year, month, category_id)

@@ -96,6 +96,36 @@ def get_summary(session: Session, year: int, month: int | None) -> DashboardSumm
     )
 
 
+def get_subcategory_breakdown(
+    session: Session, year: int, month: int | None, category_id: int
+) -> list[CategoryAmount]:
+    """Expense breakdown by subcategory for a given parent category and period."""
+    start, end = period_range(year, month)
+    categories = {c.id: c for c in category_repo.list_all(session)}
+    rows = transaction_repo.sum_subcategories_for_category(
+        session, TransactionType.expense, start, end, category_id
+    )
+    items = [
+        CategoryAmount(
+            category_id=subcat_id,
+            name=(
+                categories[subcat_id].name
+                if subcat_id is not None and subcat_id in categories
+                else UNCATEGORIZED_LABEL
+            ),
+            color=(
+                categories[subcat_id].color
+                if subcat_id is not None and subcat_id in categories
+                else None
+            ),
+            total=total,
+        )
+        for subcat_id, total in rows
+    ]
+    items.sort(key=lambda item: item.total, reverse=True)
+    return items
+
+
 def get_monthly_breakdown(session: Session, year: int) -> list[MonthlyStats]:
     """Monthly income/expense/balance for each of the 12 months of a year."""
     cumulative = Decimal("0")
