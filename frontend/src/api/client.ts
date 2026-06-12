@@ -2,6 +2,8 @@ import type { components, paths } from "./schema.d.ts";
 
 export type AccountRead = components["schemas"]["AccountRead"];
 export type CategoryRead = components["schemas"]["CategoryRead"];
+export type CategoryCreate = components["schemas"]["CategoryCreate"];
+export type CategoryUpdate = components["schemas"]["CategoryUpdate"];
 export type TransactionRead = components["schemas"]["TransactionRead"];
 export type TransactionCreate = components["schemas"]["TransactionCreate"];
 export type TransactionUpdate = components["schemas"]["TransactionUpdate"];
@@ -63,6 +65,18 @@ export const api = {
 
   categories: {
     list: () => apiFetch<CategoryRead[]>("/api/categories"),
+    create: (data: CategoryCreate) =>
+      apiFetch<CategoryRead>("/api/categories", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: number, data: CategoryUpdate) =>
+      apiFetch<CategoryRead>(`/api/categories/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: number) =>
+      apiFetch<void>(`/api/categories/${id}`, { method: "DELETE" }),
   },
 
   transactions: {

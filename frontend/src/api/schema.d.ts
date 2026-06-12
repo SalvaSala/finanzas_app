@@ -51,11 +51,30 @@ export interface paths {
         /** List Categories */
         get: operations["list_categories_api_categories_get"];
         put?: never;
-        post?: never;
+        /** Create Category */
+        post: operations["create_category_api_categories_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Category */
+        delete: operations["delete_category_api_categories__category_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Category */
+        patch: operations["update_category_api_categories__category_id__patch"];
         trace?: never;
     };
     "/api/transactions": {
@@ -743,6 +762,18 @@ export interface components {
             /** Total */
             total: string;
         };
+        /** CategoryCreate */
+        CategoryCreate: {
+            /** Name */
+            name: string;
+            type: components["schemas"]["CategoryType"];
+            /** Parent Id */
+            parent_id?: number | null;
+            /** Color */
+            color?: string | null;
+            /** Icon */
+            icon?: string | null;
+        };
         /** CategoryRead */
         CategoryRead: {
             /** Id */
@@ -762,6 +793,15 @@ export interface components {
          * @enum {string}
          */
         CategoryType: "income" | "expense";
+        /** CategoryUpdate */
+        CategoryUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Color */
+            color?: string | null;
+            /** Icon */
+            icon?: string | null;
+        };
         /**
          * DashboardSummary
          * @description KPIs and per-category breakdowns for a given period.
@@ -1278,6 +1318,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategoryRead"][];
+                };
+            };
+        };
+    };
+    create_category_api_categories_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_category_api_categories__category_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_category_api_categories__category_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

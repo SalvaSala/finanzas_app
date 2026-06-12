@@ -2,7 +2,7 @@
 
 from app.schemas.account import AccountRead
 from app.schemas.budget import BudgetCreate, BudgetProgress, BudgetRead, BudgetUpdate
-from app.schemas.category import CategoryRead
+from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 from app.schemas.dashboard import (
     BalancePoint,
     CategoryAmount,
@@ -37,7 +37,9 @@ __all__ = [
     "BudgetProgress",
     "BudgetRead",
     "BudgetUpdate",
+    "CategoryCreate",
     "CategoryRead",
+    "CategoryUpdate",
     "CategoryAmount",
     "DashboardSummary",
     "DayAmount",
