@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 
+import { Repeat } from "lucide-react";
+
 import type { AccountRead, CategoryRead, TagRead, TransactionRead } from "@/api/client";
 import { useCreateTransaction, useUpdateTransaction } from "@/hooks/useTransactions";
 import { useSetTransactionTags } from "@/hooks/useTags";
@@ -71,6 +73,7 @@ interface Props {
   accounts: AccountRead[];
   categories: CategoryRead[];
   tags?: TagRead[];
+  onConvertToRecurring?: (t: TransactionRead) => void;
 }
 
 export function TransactionForm({
@@ -81,6 +84,7 @@ export function TransactionForm({
   accounts,
   categories,
   tags = [],
+  onConvertToRecurring,
 }: Props) {
   const create = useCreateTransaction();
   const update = useUpdateTransaction();
@@ -491,7 +495,23 @@ export function TransactionForm({
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex items-center justify-between gap-2 pt-2">
+              {isEdit && onConvertToRecurring && transaction && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onConvertToRecurring(transaction);
+                  }}
+                >
+                  <Repeat className="mr-1.5 h-3.5 w-3.5" />
+                  Convertir en recurrente
+                </Button>
+              )}
+              <div className="flex gap-2 ml-auto">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
@@ -512,6 +532,7 @@ export function TransactionForm({
               >
                 {isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear movimiento"}
               </Button>
+              </div>
             </div>
           </form>
         </Form>

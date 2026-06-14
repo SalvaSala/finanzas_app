@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +11,7 @@ import type {
   CategoryRead,
   RecurrenceFrequency,
   RecurringRead,
+  TransactionRead,
 } from "@/api/client";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
@@ -123,12 +125,14 @@ function RecurringForm({
   open,
   onOpenChange,
   recurring,
+  fromTransaction,
   accounts,
   categories,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   recurring?: RecurringRead;
+  fromTransaction?: TransactionRead;
   accounts: AccountRead[];
   categories: CategoryRead[];
 }) {
@@ -171,10 +175,25 @@ function RecurringForm({
         start_date: recurring.start_date,
         end_date: recurring.end_date ?? "",
       });
+    } else if (fromTransaction) {
+      form.reset({
+        type: fromTransaction.type as FormValues["type"],
+        concept: fromTransaction.concept,
+        description: fromTransaction.description ?? "",
+        amount: fromTransaction.amount,
+        account_id: fromTransaction.account_id.toString(),
+        transfer_account_id: fromTransaction.transfer_account_id?.toString() ?? "",
+        category_id: fromTransaction.category_id?.toString() ?? "",
+        subcategory_id: fromTransaction.subcategory_id?.toString() ?? "",
+        frequency: "monthly",
+        interval: "1",
+        start_date: todayIso(),
+        end_date: "",
+      });
     } else {
       form.reset(emptyDefaults(accounts));
     }
-  }, [open, recurring, accounts, form]);
+  }, [open, recurring, fromTransaction, accounts, form]);
 
   async function onSubmit(values: FormValues) {
     const amount = values.amount.replace(",", ".");
@@ -244,7 +263,9 @@ function RecurringForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar recurrencia" : "Nueva recurrencia"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Editar recurrencia" : fromTransaction ? "Crear recurrencia desde movimiento" : "Nueva recurrencia"}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -619,9 +640,23 @@ function DeleteDialog({
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export function RecurringPage() {
+  const location = useLocation();
+  const locationState = location.state as { fromTransaction?: TransactionRead } | null;
+
   const [formOpen, setFormOpen] = useState(false);
   const [editItem, setEditItem] = useState<RecurringRead | undefined>();
+  const [fromTransaction, setFromTransaction] = useState<TransactionRead | undefined>(
+    locationState?.fromTransaction,
+  );
   const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  const openedFromNav = useRef(false);
+  useEffect(() => {
+    if (locationState?.fromTransaction && !openedFromNav.current) {
+      openedFromNav.current = true;
+      setFormOpen(true);
+    }
+  }, [locationState]);
 
   const { data: accounts = [] } = useAccounts();
   const { data: categories = [] } = useCategories();
@@ -681,6 +716,7 @@ export function RecurringPage() {
           <Button
             onClick={() => {
               setEditItem(undefined);
+              setFromTransaction(undefined);
               setFormOpen(true);
             }}
           >
@@ -703,6 +739,7 @@ export function RecurringPage() {
             className="mt-2"
             onClick={() => {
               setEditItem(undefined);
+              setFromTransaction(undefined);
               setFormOpen(true);
             }}
           >
@@ -717,6 +754,7 @@ export function RecurringPage() {
               recurring={item}
               onEdit={() => {
                 setEditItem(item);
+                setFromTransaction(undefined);
                 setFormOpen(true);
               }}
               onDelete={() => setDeleteId(item.id)}
@@ -730,9 +768,13 @@ export function RecurringPage() {
         open={formOpen}
         onOpenChange={(v) => {
           setFormOpen(v);
-          if (!v) setEditItem(undefined);
+          if (!v) {
+            setEditItem(undefined);
+            setFromTransaction(undefined);
+          }
         }}
         recurring={editItem}
+        fromTransaction={fromTransaction}
         accounts={accounts}
         categories={categories}
       />

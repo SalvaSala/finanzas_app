@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ const now = new Date();
 
 export function TransactionsPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const locationState = location.state as
     | { initialCategoryId?: number; initialNoCategorized?: boolean }
     | null;
@@ -57,6 +58,10 @@ export function TransactionsPage() {
     setEditing(t);
     setDuplicating(undefined);
     setFormOpen(true);
+  }
+
+  function convertToRecurring(t: TransactionRead) {
+    navigate("/recurrentes", { state: { fromTransaction: t } });
   }
 
   function openDuplicate(t: TransactionRead) {
@@ -156,6 +161,7 @@ export function TransactionsPage() {
         accounts={accounts}
         categories={categories}
         tags={tags}
+        onConvertToRecurring={convertToRecurring}
       />
 
       <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />
