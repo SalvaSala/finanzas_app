@@ -49,8 +49,15 @@ async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+    const text = await res.text();
+    let message = `${res.status} ${res.statusText}`;
+    try {
+      const json = JSON.parse(text) as { detail?: string };
+      if (json.detail) message = json.detail;
+    } catch {
+      if (text) message += `: ${text}`;
+    }
+    throw new Error(message);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
