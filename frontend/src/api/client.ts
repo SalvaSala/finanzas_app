@@ -38,6 +38,7 @@ export type TreemapData = components["schemas"]["TreemapData"];
 export type DayAmount = components["schemas"]["DayAmount"];
 export type SankeyData = components["schemas"]["SankeyData"];
 export type BalancePoint = components["schemas"]["BalancePoint"];
+export type CategoryAvgRow = components["schemas"]["CategoryAvgRow"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
@@ -211,6 +212,18 @@ export const api = {
       return apiFetch<CategoryAmount[]>(
         `/api/dashboard/categories/${categoryId}/breakdown?${qs}`,
       );
+    },
+
+    categoryAverages: (
+      type: "expense" | "income",
+      year: number,
+      month?: number,
+      parentId?: number,
+    ) => {
+      const qs = new URLSearchParams({ type, year: String(year) });
+      if (month != null) qs.set("month", String(month));
+      if (parentId != null) qs.set("parent_id", String(parentId));
+      return apiFetch<CategoryAvgRow[]>(`/api/dashboard/category-averages?${qs}`);
     },
   },
 

@@ -8,7 +8,7 @@ from sqlmodel import Session
 
 from app.core.db import get_session
 from app.schemas import CategoryAmount, DashboardSummary, MonthlyStats
-from app.schemas.dashboard import BalancePoint, DayAmount, SankeyData, TreemapData
+from app.schemas.dashboard import BalancePoint, CategoryAvgRow, DayAmount, SankeyData, TreemapData
 from app.services import dashboard as dashboard_service
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -68,6 +68,20 @@ def get_balance_history(
     session: Session = Depends(get_session),
 ) -> list[BalancePoint]:
     return dashboard_service.get_balance_history(session, period)
+
+
+@router.get("/category-averages", response_model=list[CategoryAvgRow])
+def get_category_averages(
+    type: Literal["expense", "income"] = Query(default="expense"),
+    year: int | None = Query(default=None),
+    month: int | None = Query(default=None, ge=1, le=12),
+    parent_id: int | None = Query(default=None),
+    session: Session = Depends(get_session),
+) -> list[CategoryAvgRow]:
+    resolved_year = year if year is not None else dt.date.today().year
+    return dashboard_service.get_category_averages(
+        session, resolved_year, month, str(type), parent_id
+    )
 
 
 @router.get("/categories/{category_id}/breakdown", response_model=list[CategoryAmount])

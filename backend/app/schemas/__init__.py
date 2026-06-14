@@ -7,6 +7,7 @@ from app.schemas.csv import ColumnMapping, CsvImportMappedResult, CsvPreviewResu
 from app.schemas.dashboard import (
     BalancePoint,
     CategoryAmount,
+    CategoryAvgRow,
     DashboardSummary,
     DayAmount,
     MonthlyStats,
@@ -43,6 +44,7 @@ __all__ = [
     "CategoryRead",
     "CategoryUpdate",
     "CategoryAmount",
+    "CategoryAvgRow",
     "DashboardSummary",
     "DayAmount",
     "MonthlyStats",

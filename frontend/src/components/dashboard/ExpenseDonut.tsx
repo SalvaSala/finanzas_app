@@ -5,7 +5,7 @@ import { PieChart, Pie, Tooltip, ResponsiveContainer, Sector } from "recharts";
 import type { PieSectorShapeProps } from "recharts";
 
 import { api } from "@/api/client";
-import type { CategoryAmount } from "@/api/client";
+import type { CategoryAmount, CategoryAvgRow } from "@/api/client";
 import { Button } from "@/components/ui/button";
 
 const FALLBACK = [
@@ -28,6 +28,7 @@ interface Props {
   month?: number;
   title?: string;
   type?: "expense" | "income";
+  averages?: CategoryAvgRow[];
 }
 
 function makeSectorShape(chartData: ChartEntry[], clickable: boolean) {
@@ -47,20 +48,40 @@ function CustomTooltip({
   active,
   payload,
   total,
+  avgMap,
+  type,
 }: {
   active?: boolean;
   payload?: { payload: ChartEntry }[];
   total: number;
+  avgMap?: Map<number, CategoryAvgRow>;
+  type?: "expense" | "income";
 }) {
   if (!active || !payload?.length) return null;
   const entry = payload[0].payload;
   const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : "0";
+  const avg = entry.categoryId != null ? avgMap?.get(entry.categoryId) : undefined;
+
+  const changePct = avg?.change_pct ?? null;
+  const isGood = changePct === null ? null : type === "expense" ? changePct < 0 : changePct > 0;
+  const changeColor = isGood === null ? "" : isGood ? "text-income" : "text-expense";
+
   return (
     <div className="rounded-lg border bg-card px-3 py-2 text-sm shadow">
       <p className="font-medium">{entry.name}</p>
       <p className="text-muted-foreground">
         {EUR.format(entry.value)} · {pct}%
       </p>
+      {avg && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Promedio mensual: {EUR.format(avg.avg_monthly)}
+          {changePct !== null && (
+            <span className={`ml-1.5 font-medium ${changeColor}`}>
+              {changePct >= 0 ? "+" : ""}{changePct.toFixed(1)}%
+            </span>
+          )}
+        </p>
+      )}
     </div>
   );
 }
@@ -70,11 +91,15 @@ function DonutView({
   title,
   onDrill,
   onBack,
+  avgMap,
+  type,
 }: {
   items: ChartEntry[];
   title: string;
   onDrill?: (entry: ChartEntry) => void;
   onBack?: () => void;
+  avgMap?: Map<number, CategoryAvgRow>;
+  type?: "expense" | "income";
 }) {
   const total = items.reduce((s, d) => s + d.value, 0);
   const clickable = Boolean(onDrill);
@@ -112,7 +137,7 @@ function DonutView({
                 : undefined
             }
           />
-          <Tooltip content={<CustomTooltip total={total} />} />
+          <Tooltip content={<CustomTooltip total={total} avgMap={avgMap} type={type} />} />
         </PieChart>
       </ResponsiveContainer>
 
@@ -156,8 +181,13 @@ export function ExpenseDonut({
   month,
   title = "Gastos por categoría",
   type = "expense",
+  averages,
 }: Props) {
   const [drilled, setDrilled] = useState<{ id: number; name: string } | null>(null);
+
+  const avgMap = averages
+    ? new Map(averages.map((r) => [r.category_id, r]))
+    : undefined;
 
   const { data: subData, isLoading: subLoading } = useQuery({
     queryKey: ["dashboard", "category-breakdown", drilled?.id, year, month, type],
@@ -230,6 +260,7 @@ export function ExpenseDonut({
         items={subItems}
         title={drilled.name}
         onBack={() => setDrilled(null)}
+        type={type}
       />
     );
   }
@@ -239,6 +270,8 @@ export function ExpenseDonut({
     <DonutView
       items={topItems}
       title={title}
+      type={type}
+      avgMap={avgMap}
       onDrill={(entry) => {
         if (entry.categoryId !== null) {
           setDrilled({ id: entry.categoryId, name: entry.name });

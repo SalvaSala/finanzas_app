@@ -15,6 +15,7 @@ from app.repositories import transaction as transaction_repo
 from app.schemas.dashboard import (
     BalancePoint,
     CategoryAmount,
+    CategoryAvgRow,
     DashboardSummary,
     DayAmount,
     MonthlyStats,
@@ -276,6 +277,103 @@ def get_sankey(session: Session, year: int, month: int | None) -> SankeyData:
     return SankeyData(nodes=nodes, links=links)
 
 
+def get_category_averages(
+    session: Session,
+    year: int,
+    month: int | None,
+    transaction_type_str: str,
+    parent_id: int | None = None,
+) -> list[CategoryAvgRow]:
+    """Monthly average vs current period amount for each category (or subcategory).
+
+    Average = sum(Jan → selected month of ``year``) / num_months.
+    For a full-year view of the current year, the window ends at the current month.
+    For a past year with no month selected, the window covers all 12 months.
+    """
+    today = dt.date.today()
+    tx_type = (
+        TransactionType.income if transaction_type_str == "income" else TransactionType.expense
+    )
+
+    # Current period (the "este mes/año" column)
+    current_start, current_end = period_range(year, month)
+
+    # Average window: always starts Jan 1 of the selected year
+    avg_start = dt.date(year, 1, 1)
+    if month is not None:
+        # Selected a specific month → average over Jan..month
+        avg_end = current_end
+        avg_months = month
+    elif year < today.year:
+        # Past year, full-year view → average over all 12 months
+        avg_end = dt.date(year, 12, 31)
+        avg_months = 12
+    elif year == today.year:
+        # Current year, full-year view → average over Jan..current month
+        avg_months = today.month
+        _, avg_end = period_range(year, today.month)
+    else:
+        # Future year: no data
+        avg_months = 1
+        avg_end = avg_start
+
+    avg_divisor = Decimal(avg_months)
+    categories = {c.id: c for c in category_repo.list_all(session)}
+
+    def _build_row(cat_id: int, current: Decimal, avg_total: Decimal) -> CategoryAvgRow:
+        cat = categories[cat_id]
+        avg_monthly = avg_total / avg_divisor
+        return CategoryAvgRow(
+            category_id=cat_id,
+            name=cat.name,
+            color=cat.color,
+            icon=cat.icon,
+            avg_monthly=float(avg_monthly),
+            current_amount=float(current),
+            change_pct=_pct_change(current, avg_monthly),
+        )
+
+    if parent_id is None:
+        current_map = dict(
+            transaction_repo.sum_by_category(session, tx_type, current_start, current_end)
+        )
+        avg_map = dict(transaction_repo.sum_by_category(session, tx_type, avg_start, avg_end))
+        all_ids: set[int] = {
+            cid for cid in (set(current_map) | set(avg_map)) if cid is not None
+        }
+        parent_cat_ids = {
+            cid
+            for cid in all_ids
+            if cid in categories and categories[cid].parent_id is None
+        }
+        rows = [
+            _build_row(cid, current_map.get(cid, Decimal(0)), avg_map.get(cid, Decimal(0)))
+            for cid in parent_cat_ids
+        ]
+    else:
+        current_map_sub = dict(
+            transaction_repo.sum_subcategories_for_category(
+                session, tx_type, current_start, current_end, parent_id
+            )
+        )
+        avg_map_sub = dict(
+            transaction_repo.sum_subcategories_for_category(
+                session, tx_type, avg_start, avg_end, parent_id
+            )
+        )
+        all_ids_sub: set[int] = {
+            sid for sid in (set(current_map_sub) | set(avg_map_sub)) if sid is not None
+        }
+        rows = [
+            _build_row(sid, current_map_sub.get(sid, Decimal(0)), avg_map_sub.get(sid, Decimal(0)))
+            for sid in all_ids_sub
+            if sid in categories
+        ]
+
+    rows.sort(key=lambda r: r.current_amount, reverse=True)
+    return rows
+
+
 def _years_ago(today: dt.date, n: int) -> dt.date:
     try:
         return today.replace(year=today.year - n)
@@ -305,9 +403,7 @@ def get_balance_history(session: Session, period: str) -> list[BalancePoint]:
         monthly = True
 
     opening = transaction_repo.cumulative_net_before(session, start)
-    daily_nets: dict[dt.date, Decimal] = dict(
-        transaction_repo.net_by_day(session, start, today)
-    )
+    daily_nets: dict[dt.date, Decimal] = dict(transaction_repo.net_by_day(session, start, today))
 
     if not monthly:
         # One point per day
@@ -325,9 +421,7 @@ def get_balance_history(session: Session, period: str) -> list[BalancePoint]:
     cursor = start
     while cursor <= today:
         key = cursor.strftime("%Y-%m")
-        monthly_nets[key] = monthly_nets.get(key, Decimal(0)) + daily_nets.get(
-            cursor, Decimal(0)
-        )
+        monthly_nets[key] = monthly_nets.get(key, Decimal(0)) + daily_nets.get(cursor, Decimal(0))
         cursor += dt.timedelta(days=1)
 
     points = []

@@ -343,6 +343,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/category-averages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Category Averages */
+        get: operations["get_category_averages_api_dashboard_category_averages_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/categories/{category_id}/breakdown": {
         parameters: {
             query?: never;
@@ -832,6 +849,26 @@ export interface components {
             color: string | null;
             /** Total */
             total: string;
+        };
+        /**
+         * CategoryAvgRow
+         * @description Monthly average vs current period for a category or subcategory.
+         */
+        CategoryAvgRow: {
+            /** Category Id */
+            category_id: number;
+            /** Name */
+            name: string;
+            /** Color */
+            color: string | null;
+            /** Icon */
+            icon: string | null;
+            /** Avg Monthly */
+            avg_monthly: number;
+            /** Current Amount */
+            current_amount: number;
+            /** Change Pct */
+            change_pct: number | null;
         };
         /** CategoryCreate */
         CategoryCreate: {
@@ -2158,6 +2195,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BalancePoint"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_category_averages_api_dashboard_category_averages_get: {
+        parameters: {
+            query?: {
+                type?: "expense" | "income";
+                year?: number | null;
+                month?: number | null;
+                parent_id?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryAvgRow"][];
                 };
             };
             /** @description Validation Error */

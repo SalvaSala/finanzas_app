@@ -22,7 +22,7 @@ class DashboardSummary(BaseModel):
     income: Decimal
     expense: Decimal
     balance: Decimal
-    income_change: float | None = None   # % vs prior period (None when no prior data)
+    income_change: float | None = None  # % vs prior period (None when no prior data)
     expense_change: float | None = None
     balance_change: float | None = None
     expense_by_category: list[CategoryAmount]
@@ -102,3 +102,15 @@ class BalancePoint(BaseModel):
 
     date: str  # "YYYY-MM-DD"
     balance: float
+
+
+class CategoryAvgRow(BaseModel):
+    """Monthly average vs current period for a category or subcategory."""
+
+    category_id: int
+    name: str
+    color: str | None
+    icon: str | None
+    avg_monthly: float  # average monthly amount for the year up to selected month
+    current_amount: float  # amount in the selected period
+    change_pct: float | None  # (current - avg) / avg * 100; None when avg is 0

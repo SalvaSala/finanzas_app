@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { FileDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
+import { api } from "@/api/client";
 import { useDashboard, useDashboardMonthly } from "@/hooks/useDashboard";
 
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ExpenseDonut } from "@/components/dashboard/ExpenseDonut";
+import { CategoryAveragesTable } from "@/components/dashboard/CategoryAveragesTable";
 import { MonthlyBarChart } from "@/components/dashboard/MonthlyBarChart";
 import { BalanceEvolutionChart } from "@/components/dashboard/BalanceEvolutionChart";
 import { Button } from "@/components/ui/button";
@@ -19,6 +22,16 @@ export function DashboardPage() {
 
   const { data: summary, isLoading } = useDashboard(year, month);
   const { data: monthly = [] } = useDashboardMonthly(year);
+
+  const { data: expenseAverages } = useQuery({
+    queryKey: ["dashboard", "category-averages", "expense", year, month],
+    queryFn: () => api.dashboard.categoryAverages("expense", year, month),
+  });
+
+  const { data: incomeAverages } = useQuery({
+    queryKey: ["dashboard", "category-averages", "income", year, month],
+    queryFn: () => api.dashboard.categoryAverages("income", year, month),
+  });
 
   return (
     <div className="space-y-6">
@@ -72,6 +85,7 @@ export function DashboardPage() {
                 month={month}
                 title="Gastos por categoría"
                 type="expense"
+                averages={expenseAverages}
               />
             </div>
             <div className="rounded-xl border bg-card p-5">
@@ -81,8 +95,14 @@ export function DashboardPage() {
                 month={month}
                 title="Ingresos por categoría"
                 type="income"
+                averages={incomeAverages}
               />
             </div>
+          </div>
+
+          {/* Category averages table */}
+          <div className="rounded-xl border bg-card p-5">
+            <CategoryAveragesTable year={year} month={month} />
           </div>
 
           {/* Monthly charts */}
