@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -84,6 +84,7 @@ export function TransactionForm({
   const update = useUpdateTransaction();
   const setTags = useSetTransactionTags();
   const isEdit = !!transaction;
+  const createAnotherRef = useRef(false);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>(
     transaction?.tags?.map((t) => t.id) ?? [],
   );
@@ -201,8 +202,26 @@ export function TransactionForm({
         toast.success("Movimiento creado");
       }
       await setTags.mutateAsync({ transactionId: txId, tagIds: selectedTagIds });
-      onOpenChange(false);
+      if (createAnotherRef.current) {
+        createAnotherRef.current = false;
+        form.reset({
+          date: values.date,
+          type: values.type,
+          concept: "",
+          description: "",
+          amount: "",
+          account_id: values.account_id,
+          transfer_account_id: "",
+          category_id: "",
+          subcategory_id: "",
+        });
+        setSelectedTagIds([]);
+        form.setFocus("concept");
+      } else {
+        onOpenChange(false);
+      }
     } catch {
+      createAnotherRef.current = false;
       toast.error("Error al guardar el movimiento");
     }
   }
@@ -459,7 +478,21 @@ export function TransactionForm({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isPending}>
+              {!isEdit && (
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={() => { createAnotherRef.current = true; }}
+                >
+                  {isPending && createAnotherRef.current ? "Guardando…" : "Guardar y crear otro"}
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={isPending}
+                onClick={() => { createAnotherRef.current = false; }}
+              >
                 {isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear movimiento"}
               </Button>
             </div>
