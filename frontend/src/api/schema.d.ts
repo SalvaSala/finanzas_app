@@ -59,6 +59,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/categories/{category_id}/delete-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Delete Info */
+        get: operations["delete_info_api_categories__category_id__delete_info_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/categories/{category_id}": {
         parameters: {
             query?: never;
@@ -774,6 +791,13 @@ export interface components {
             /** Icon */
             icon?: string | null;
         };
+        /** CategoryDeleteInfo */
+        CategoryDeleteInfo: {
+            /** Subcategory Count */
+            subcategory_count: number;
+            /** Transaction Count */
+            transaction_count: number;
+        };
         /** CategoryRead */
         CategoryRead: {
             /** Id */
@@ -1342,6 +1366,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategoryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_info_api_categories__category_id__delete_info_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDeleteInfo"];
                 };
             };
             /** @description Validation Error */

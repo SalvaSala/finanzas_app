@@ -6,7 +6,7 @@ from sqlmodel import Session
 from app.core.db import get_session
 from app.models import Category
 from app.repositories import category as category_repo
-from app.schemas import CategoryCreate, CategoryRead, CategoryUpdate
+from app.schemas import CategoryCreate, CategoryDeleteInfo, CategoryRead, CategoryUpdate
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -14,6 +14,18 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 @router.get("", response_model=list[CategoryRead])
 def list_categories(session: Session = Depends(get_session)) -> list[Category]:
     return category_repo.list_all(session)
+
+
+@router.get("/{category_id}/delete-info", response_model=CategoryDeleteInfo)
+def delete_info(
+    category_id: int, session: Session = Depends(get_session)
+) -> CategoryDeleteInfo:
+    if category_repo.get(session, category_id) is None:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    return CategoryDeleteInfo(
+        subcategory_count=category_repo.count_children(session, category_id),
+        transaction_count=category_repo.count_affected_transactions(session, category_id),
+    )
 
 
 @router.post("", response_model=CategoryRead, status_code=201)
@@ -65,17 +77,6 @@ def delete_category(
     category_id: int,
     session: Session = Depends(get_session),
 ) -> None:
-    category = category_repo.get(session, category_id)
-    if category is None:
+    if category_repo.get(session, category_id) is None:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    if category_repo.has_children(session, category_id):
-        raise HTTPException(
-            status_code=409,
-            detail="Elimina primero las subcategorías de esta categoría",
-        )
-    if category_repo.has_transactions(session, category_id):
-        raise HTTPException(
-            status_code=409,
-            detail="Hay movimientos asignados a esta categoría",
-        )
-    category_repo.delete(session, category)
+    category_repo.cascade_delete(session, category_id)

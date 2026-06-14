@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 import { useCategories, useCategoryMutations } from "@/hooks/useCategories";
+import { api } from "@/api/client";
 import type { CategoryRead, CategoryCreate, CategoryUpdate, CategoryType } from "@/api/client";
 
 import { Button } from "@/components/ui/button";
@@ -156,12 +159,19 @@ interface CategoryListProps {
 }
 
 function CategoryList({ type }: CategoryListProps) {
+  const navigate = useNavigate();
   const { data: categories = [] } = useCategories();
   const { create, update, remove } = useCategoryMutations();
 
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CategoryRead | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const { data: deleteInfo } = useQuery({
+    queryKey: ["categories", deleteTarget?.id, "delete-info"],
+    queryFn: () => api.categories.deleteInfo(deleteTarget!.id),
+    enabled: deleteTarget !== null,
+  });
 
   const parents = categories.filter((c) => c.type === type && c.parent_id === null);
   const childrenOf = (parentId: number) =>
@@ -199,6 +209,12 @@ function CategoryList({ type }: CategoryListProps) {
       onSuccess: () => { toast.success("Categoría eliminada"); setDeleteTarget(null); },
       onError: (e) => { toast.error((e as Error).message); setDeleteTarget(null); },
     });
+  }
+
+  function handleViewTransactions() {
+    if (!deleteTarget) return;
+    navigate("/transacciones", { state: { initialCategoryId: deleteTarget.id } });
+    setDeleteTarget(null);
   }
 
   const saving = create.isPending || update.isPending;
@@ -371,16 +387,51 @@ function CategoryList({ type }: CategoryListProps) {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar categoría?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se eliminará <strong>{deleteTarget?.name}</strong>. Esta acción no se puede deshacer.
+            <AlertDialogTitle>¿Eliminar «{deleteTarget?.name}»?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {!deleteInfo ? (
+                  <p>Comprobando…</p>
+                ) : (
+                  <>
+                    {deleteInfo.subcategory_count > 0 && (
+                      <p>
+                        Se eliminarán también{" "}
+                        <strong className="text-foreground">
+                          {deleteInfo.subcategory_count}{" "}
+                          {deleteInfo.subcategory_count === 1 ? "subcategoría" : "subcategorías"}
+                        </strong>{" "}
+                        asociadas.
+                      </p>
+                    )}
+                    {deleteInfo.transaction_count > 0 && (
+                      <p>
+                        <strong className="text-foreground">
+                          {deleteInfo.transaction_count}{" "}
+                          {deleteInfo.transaction_count === 1 ? "movimiento" : "movimientos"}
+                        </strong>{" "}
+                        perderán su categoría. Puedes verlos primero para reasignarlos.
+                      </p>
+                    )}
+                    {deleteInfo.subcategory_count === 0 && deleteInfo.transaction_count === 0 && (
+                      <p>Esta acción no se puede deshacer.</p>
+                    )}
+                  </>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-wrap gap-2">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            {deleteInfo && deleteInfo.transaction_count > 0 && (
+              <Button variant="outline" onClick={handleViewTransactions}>
+                Ver movimientos
+              </Button>
+            )}
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDelete}
+              disabled={!deleteInfo}
             >
               Eliminar
             </AlertDialogAction>

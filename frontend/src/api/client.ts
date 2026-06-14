@@ -4,6 +4,7 @@ export type AccountRead = components["schemas"]["AccountRead"];
 export type CategoryRead = components["schemas"]["CategoryRead"];
 export type CategoryCreate = components["schemas"]["CategoryCreate"];
 export type CategoryUpdate = components["schemas"]["CategoryUpdate"];
+export type CategoryDeleteInfo = components["schemas"]["CategoryDeleteInfo"];
 export type TransactionRead = components["schemas"]["TransactionRead"];
 export type TransactionCreate = components["schemas"]["TransactionCreate"];
 export type TransactionUpdate = components["schemas"]["TransactionUpdate"];
@@ -82,6 +83,8 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
+    deleteInfo: (id: number) =>
+      apiFetch<CategoryDeleteInfo>(`/api/categories/${id}/delete-info`),
     delete: (id: number) =>
       apiFetch<void>(`/api/categories/${id}`, { method: "DELETE" }),
   },

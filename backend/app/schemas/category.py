@@ -28,3 +28,8 @@ class CategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=60)
     color: str | None = None
     icon: str | None = None
+
+
+class CategoryDeleteInfo(BaseModel):
+    subcategory_count: int
+    transaction_count: int

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Plus, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,6 +20,9 @@ import { Separator } from "@/components/ui/separator";
 const now = new Date();
 
 export function TransactionsPage() {
+  const location = useLocation();
+  const locationState = location.state as { initialCategoryId?: number } | null;
+
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionRead | undefined>();
@@ -26,6 +30,9 @@ export function TransactionsPage() {
   const [filters, setFilters] = useState<ListTransactionsQuery>({
     year: now.getFullYear(),
     month: now.getMonth() + 1,
+    ...(locationState?.initialCategoryId != null
+      ? { category_id: locationState.initialCategoryId, year: undefined, month: undefined }
+      : {}),
   });
 
   const { data: transactions = [], isLoading: loadingTx } = useTransactions(filters);
