@@ -9,6 +9,7 @@ import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ExpenseDonut } from "@/components/dashboard/ExpenseDonut";
 import { CategoryAveragesTable } from "@/components/dashboard/CategoryAveragesTable";
+import { TopCategoriesChart } from "@/components/dashboard/TopCategoriesChart";
 import { MonthlyBarChart } from "@/components/dashboard/MonthlyBarChart";
 import { BalanceEvolutionChart } from "@/components/dashboard/BalanceEvolutionChart";
 import { Button } from "@/components/ui/button";
@@ -100,9 +101,17 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Category averages table */}
-          <div className="rounded-xl border bg-card p-5">
-            <CategoryAveragesTable year={year} month={month} />
+          {/* Top categories + averages table */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="rounded-xl border bg-card p-5">
+              <TopCategoriesChart
+                expenseData={summary.expense_by_category}
+                incomeData={summary.income_by_category}
+              />
+            </div>
+            <div className="rounded-xl border bg-card p-5">
+              <CategoryAveragesTable year={year} month={month} />
+            </div>
           </div>
 
           {/* Monthly charts */}
