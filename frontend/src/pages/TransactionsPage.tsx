@@ -28,6 +28,7 @@ export function TransactionsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionRead | undefined>();
+  const [duplicating, setDuplicating] = useState<TransactionRead | undefined>();
 
   const initialFilters = (): ListTransactionsQuery => {
     if (locationState?.initialNoCategorized) {
@@ -48,11 +49,19 @@ export function TransactionsPage() {
 
   function openCreate() {
     setEditing(undefined);
+    setDuplicating(undefined);
     setFormOpen(true);
   }
 
   function openEdit(t: TransactionRead) {
     setEditing(t);
+    setDuplicating(undefined);
+    setFormOpen(true);
+  }
+
+  function openDuplicate(t: TransactionRead) {
+    setEditing(undefined);
+    setDuplicating(t);
     setFormOpen(true);
   }
 
@@ -132,13 +141,18 @@ export function TransactionsPage() {
           accounts={accounts}
           categories={categories}
           onEdit={openEdit}
+          onDuplicate={openDuplicate}
         />
       )}
 
       <TransactionForm
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setDuplicating(undefined);
+        }}
         transaction={editing}
+        duplicateFrom={duplicating}
         accounts={accounts}
         categories={categories}
         tags={tags}

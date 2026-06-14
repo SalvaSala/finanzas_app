@@ -67,6 +67,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: TransactionRead;
+  duplicateFrom?: TransactionRead;
   accounts: AccountRead[];
   categories: CategoryRead[];
   tags?: TagRead[];
@@ -76,6 +77,7 @@ export function TransactionForm({
   open,
   onOpenChange,
   transaction,
+  duplicateFrom,
   accounts,
   categories,
   tags = [],
@@ -134,6 +136,19 @@ export function TransactionForm({
           subcategory_id: transaction.subcategory_id?.toString() ?? "",
         });
         setSelectedTagIds(transaction.tags?.map((t) => t.id) ?? []);
+      } else if (duplicateFrom) {
+        form.reset({
+          date: duplicateFrom.date,
+          type: duplicateFrom.type as FormValues["type"],
+          concept: duplicateFrom.concept,
+          description: duplicateFrom.description ?? "",
+          amount: duplicateFrom.amount,
+          account_id: duplicateFrom.account_id.toString(),
+          transfer_account_id: duplicateFrom.transfer_account_id?.toString() ?? "",
+          category_id: duplicateFrom.category_id?.toString() ?? "",
+          subcategory_id: duplicateFrom.subcategory_id?.toString() ?? "",
+        });
+        setSelectedTagIds(duplicateFrom.tags?.map((t) => t.id) ?? []);
       } else {
         form.reset({
           date: todayIso(),
@@ -149,7 +164,7 @@ export function TransactionForm({
         setSelectedTagIds([]);
       }
     }
-  }, [open, transaction, accounts, form]);
+  }, [open, transaction, duplicateFrom, accounts, form]);
 
   // Reset category when type changes
   useEffect(() => {
@@ -232,7 +247,9 @@ export function TransactionForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar movimiento" : "Nuevo movimiento"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Editar movimiento" : duplicateFrom ? "Duplicar movimiento" : "Nuevo movimiento"}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>

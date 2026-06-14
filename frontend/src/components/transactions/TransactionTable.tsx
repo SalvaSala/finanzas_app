@@ -7,7 +7,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { useState } from "react";
-import { Pencil, Trash2, ChevronUp, ChevronDown, Repeat } from "lucide-react";
+import { Pencil, Trash2, ChevronUp, ChevronDown, Repeat, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import type { AccountRead, CategoryRead, TransactionRead } from "@/api/client";
@@ -29,6 +29,7 @@ interface Props {
   accounts: AccountRead[];
   categories: CategoryRead[];
   onEdit: (t: TransactionRead) => void;
+  onDuplicate: (t: TransactionRead) => void;
 }
 
 function CategoryCell({
@@ -96,7 +97,7 @@ function DeleteDialog({
   );
 }
 
-export function TransactionTable({ transactions, accounts, categories, onEdit }: Props) {
+export function TransactionTable({ transactions, accounts, categories, onEdit, onDuplicate }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [toDelete, setToDelete] = useState<TransactionRead | null>(null);
 
@@ -223,6 +224,16 @@ export function TransactionTable({ transactions, accounts, categories, onEdit }:
             variant="ghost"
             size="icon"
             className="h-8 w-8"
+            title="Duplicar"
+            onClick={() => onDuplicate(row.original)}
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="Editar"
             onClick={() => onEdit(row.original)}
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -231,6 +242,7 @@ export function TransactionTable({ transactions, accounts, categories, onEdit }:
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-expense hover:text-expense"
+            title="Eliminar"
             onClick={() => setToDelete(row.original)}
           >
             <Trash2 className="h-3.5 w-3.5" />
