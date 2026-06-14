@@ -21,19 +21,25 @@ const now = new Date();
 
 export function TransactionsPage() {
   const location = useLocation();
-  const locationState = location.state as { initialCategoryId?: number } | null;
+  const locationState = location.state as
+    | { initialCategoryId?: number; initialNoCategorized?: boolean }
+    | null;
 
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionRead | undefined>();
 
-  const [filters, setFilters] = useState<ListTransactionsQuery>({
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    ...(locationState?.initialCategoryId != null
-      ? { category_id: locationState.initialCategoryId, year: undefined, month: undefined }
-      : {}),
-  });
+  const initialFilters = (): ListTransactionsQuery => {
+    if (locationState?.initialNoCategorized) {
+      return { no_category: true };
+    }
+    if (locationState?.initialCategoryId != null) {
+      return { category_id: locationState.initialCategoryId };
+    }
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  };
+
+  const [filters, setFilters] = useState<ListTransactionsQuery>(initialFilters);
 
   const { data: transactions = [], isLoading: loadingTx } = useTransactions(filters);
   const { data: accounts = [], isLoading: loadingAcc } = useAccounts();

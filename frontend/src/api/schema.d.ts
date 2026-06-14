@@ -129,6 +129,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/transactions/csv-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Csv Preview
+         * @description Auto-detect encoding/separator and return headers + first 5 rows.
+         */
+        post: operations["csv_preview_api_transactions_csv_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transactions/csv-import-mapped": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Csv Import Mapped
+         * @description Import a CSV using a user-defined column mapping.
+         */
+        post: operations["csv_import_mapped_api_transactions_csv_import_mapped_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transactions/import-csv": {
         parameters: {
             query?: never;
@@ -657,6 +697,20 @@ export interface components {
             /** Balance */
             balance: number;
         };
+        /** Body_csv_import_mapped_api_transactions_csv_import_mapped_post */
+        Body_csv_import_mapped_api_transactions_csv_import_mapped_post: {
+            /** File */
+            file: string;
+            /** Account Id */
+            account_id: number;
+            /** Mapping */
+            mapping: string;
+        };
+        /** Body_csv_preview_api_transactions_csv_preview_post */
+        Body_csv_preview_api_transactions_csv_preview_post: {
+            /** File */
+            file: string;
+        };
         /** Body_import_transactions_api_transactions_import_csv_post */
         Body_import_transactions_api_transactions_import_csv_post: {
             /** File */
@@ -825,6 +879,28 @@ export interface components {
             color?: string | null;
             /** Icon */
             icon?: string | null;
+        };
+        /** CsvImportMappedResult */
+        CsvImportMappedResult: {
+            /** Imported */
+            imported: number;
+            /** Skipped */
+            skipped: number;
+            /** Uncategorized */
+            uncategorized: number;
+            /** Errors */
+            errors: string[];
+        };
+        /** CsvPreviewResult */
+        CsvPreviewResult: {
+            /** Encoding */
+            encoding: string;
+            /** Separator */
+            separator: string;
+            /** Headers */
+            headers: string[];
+            /** Preview Rows */
+            preview_rows: string[][];
         };
         /**
          * DashboardSummary
@@ -1482,6 +1558,7 @@ export interface operations {
                 limit?: number | null;
                 type?: components["schemas"]["TransactionType"] | null;
                 category_id?: number | null;
+                no_category?: boolean;
                 account_id?: number | null;
                 tag_id?: number | null;
                 search?: string | null;
@@ -1568,6 +1645,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    csv_preview_api_transactions_csv_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_csv_preview_api_transactions_csv_preview_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsvPreviewResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    csv_import_mapped_api_transactions_csv_import_mapped_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_csv_import_mapped_api_transactions_csv_import_mapped_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsvImportMappedResult"];
                 };
             };
             /** @description Validation Error */

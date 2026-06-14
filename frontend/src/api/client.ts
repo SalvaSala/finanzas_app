@@ -43,6 +43,19 @@ export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
 >;
 export type ImportResult = components["schemas"]["ImportResult"];
+export type CsvPreviewResult = components["schemas"]["CsvPreviewResult"];
+export type CsvImportMappedResult = components["schemas"]["CsvImportMappedResult"];
+
+export interface ColumnMapping {
+  date_col: string;
+  concept_col: string;
+  amount_col: string;
+  description_col?: string | null;
+  category_col?: string | null;
+  date_format?: string;  // "auto" | "iso" | "mdy" | "dmy"
+  decimal_sep?: string;  // "auto" | "dot" | "comma"
+  sign_convention?: string;  // "signed"
+}
 
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -97,6 +110,7 @@ export const api = {
       if (params?.limit != null) qs.set("limit", String(params.limit));
       if (params?.type != null) qs.set("type", params.type);
       if (params?.category_id != null) qs.set("category_id", String(params.category_id));
+      if (params?.no_category) qs.set("no_category", "true");
       if (params?.account_id != null) qs.set("account_id", String(params.account_id));
       if (params?.search != null && params.search !== "")
         qs.set("search", params.search);
@@ -135,6 +149,28 @@ export const api = {
       const body = new FormData();
       body.append("file", file);
       return apiFetch<ImportResult>("/api/transactions/import-csv", {
+        method: "POST",
+        headers: {},
+        body,
+      });
+    },
+
+    csvPreview: (file: File) => {
+      const body = new FormData();
+      body.append("file", file);
+      return apiFetch<CsvPreviewResult>("/api/transactions/csv-preview", {
+        method: "POST",
+        headers: {},
+        body,
+      });
+    },
+
+    csvImportMapped: (file: File, accountId: number, mapping: ColumnMapping) => {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("account_id", String(accountId));
+      body.append("mapping", JSON.stringify(mapping));
+      return apiFetch<CsvImportMappedResult>("/api/transactions/csv-import-mapped", {
         method: "POST",
         headers: {},
         body,

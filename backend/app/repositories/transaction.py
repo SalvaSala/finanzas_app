@@ -43,6 +43,7 @@ def list_(
     account_id: int | None = None,
     search: str | None = None,
     tag_id: int | None = None,
+    no_category: bool = False,
 ) -> list[Transaction]:
     """List transactions (newest first) with optional filters."""
     statement = select(Transaction)
@@ -52,7 +53,9 @@ def list_(
         statement = statement.where(col(Transaction.date) <= end)
     if transaction_type is not None:
         statement = statement.where(col(Transaction.type) == transaction_type)
-    if category_id is not None:
+    if no_category:
+        statement = statement.where(col(Transaction.category_id).is_(None))
+    elif category_id is not None:
         statement = statement.where(col(Transaction.category_id) == category_id)
     if account_id is not None:
         statement = statement.where(

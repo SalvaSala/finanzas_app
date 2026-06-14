@@ -2,7 +2,7 @@
 
 import datetime as dt
 
-from fastapi import APIRouter, Depends, Query, UploadFile, status
+from fastapi import APIRouter, Depends, Form, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session
 
@@ -10,6 +10,7 @@ from app.core.db import get_session
 from app.models import Transaction
 from app.models.enums import TransactionType
 from app.schemas import TransactionCreate, TransactionRead, TransactionUpdate
+from app.schemas.csv import ColumnMapping, CsvImportMappedResult, CsvPreviewResult
 from app.schemas.tag import TagRead
 from app.schemas.transaction import ImportResult
 from app.services import csv_io
@@ -27,6 +28,7 @@ def list_transactions(
     limit: int | None = Query(default=None, ge=1),
     type: TransactionType | None = Query(default=None),
     category_id: int | None = Query(default=None),
+    no_category: bool = Query(default=False),
     account_id: int | None = Query(default=None),
     tag_id: int | None = Query(default=None),
     search: str | None = Query(default=None, max_length=200),
@@ -45,6 +47,7 @@ def list_transactions(
         account_id=account_id,
         search=search,
         tag_id=tag_id,
+        no_category=no_category,
     )
 
 
@@ -55,8 +58,8 @@ def create_transaction(
     return transaction_service.create_transaction(session, data)
 
 
-# NOTE: /export and /import-csv must be declared BEFORE /{transaction_id}
-# so FastAPI does not treat the literal strings as integer path params.
+# NOTE: /export, /csv-preview, /csv-import-mapped, /import-csv must be declared
+# BEFORE /{transaction_id} so FastAPI does not treat literal strings as int params.
 
 
 @router.get("/export")
@@ -89,6 +92,26 @@ def export_transactions(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/csv-preview", response_model=CsvPreviewResult)
+async def csv_preview(file: UploadFile) -> CsvPreviewResult:
+    """Auto-detect encoding/separator and return headers + first 5 rows."""
+    raw = await file.read()
+    return csv_io.detect_csv(raw)
+
+
+@router.post("/csv-import-mapped", response_model=CsvImportMappedResult)
+async def csv_import_mapped(
+    file: UploadFile,
+    account_id: int = Form(...),
+    mapping: str = Form(...),
+    session: Session = Depends(get_session),
+) -> CsvImportMappedResult:
+    """Import a CSV using a user-defined column mapping."""
+    raw = await file.read()
+    mapping_data = ColumnMapping.model_validate_json(mapping)
+    return csv_io.import_csv_mapped(session, raw, account_id, mapping_data)
 
 
 @router.post("/import-csv", response_model=ImportResult)

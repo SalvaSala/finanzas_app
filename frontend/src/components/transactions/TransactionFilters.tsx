@@ -20,6 +20,7 @@ interface Props {
 }
 
 const ALL = "__all__";
+const NONE_CAT = "__none__"; // sin categoría
 
 export function TransactionFilters({ filters, onChange, accounts, categories, tags = [] }: Props) {
   const parentCategories = categories.filter((c) => c.parent_id === null);
@@ -28,11 +29,26 @@ export function TransactionFilters({ filters, onChange, accounts, categories, ta
     filters.search ||
     filters.type ||
     filters.category_id != null ||
+    filters.no_category ||
     filters.account_id != null ||
     filters.tag_id != null;
 
   function clear() {
     onChange({ year: filters.year, month: filters.month, limit: filters.limit });
+  }
+
+  const categorySelectValue =
+    filters.no_category ? NONE_CAT :
+    filters.category_id != null ? String(filters.category_id) : ALL;
+
+  function handleCategoryChange(v: string) {
+    if (v === NONE_CAT) {
+      onChange({ ...filters, category_id: undefined, no_category: true });
+    } else if (v === ALL) {
+      onChange({ ...filters, category_id: undefined, no_category: undefined });
+    } else {
+      onChange({ ...filters, category_id: parseInt(v), no_category: undefined });
+    }
   }
 
   return (
@@ -65,17 +81,13 @@ export function TransactionFilters({ filters, onChange, accounts, categories, ta
       </Select>
 
       {/* Category */}
-      <Select
-        value={filters.category_id != null ? String(filters.category_id) : ALL}
-        onValueChange={(v) =>
-          onChange({ ...filters, category_id: v === ALL ? undefined : parseInt(v) })
-        }
-      >
+      <Select value={categorySelectValue} onValueChange={handleCategoryChange}>
         <SelectTrigger className="h-9 w-44">
           <SelectValue placeholder="Categoría" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={ALL}>Todas las categorías</SelectItem>
+          <SelectItem value={NONE_CAT}>Sin categoría</SelectItem>
           {parentCategories.map((c) => (
             <SelectItem key={c.id} value={String(c.id)}>
               {c.name}
