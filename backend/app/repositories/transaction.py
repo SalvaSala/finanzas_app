@@ -3,10 +3,10 @@
 import datetime as dt
 from decimal import Decimal
 
-from sqlalchemy import case, func
+from sqlalchemy import case, exists, func
 from sqlmodel import Session, col, select
 
-from app.models import Transaction, transaction_tags_table
+from app.models import Category, Transaction, transaction_tags_table
 from app.models.enums import TransactionType
 
 
@@ -44,6 +44,7 @@ def list_(
     search: str | None = None,
     tag_id: int | None = None,
     no_category: bool = False,
+    no_subcategory: bool = False,
 ) -> list[Transaction]:
     """List transactions (newest first) with optional filters."""
     statement = select(Transaction)
@@ -53,7 +54,16 @@ def list_(
         statement = statement.where(col(Transaction.date) <= end)
     if transaction_type is not None:
         statement = statement.where(col(Transaction.type) == transaction_type)
-    if no_category:
+    if no_subcategory:
+        has_subcategories = exists().where(
+            col(Category.parent_id) == col(Transaction.category_id)
+        )
+        statement = statement.where(
+            col(Transaction.category_id).is_not(None),
+            col(Transaction.subcategory_id).is_(None),
+            has_subcategories,
+        )
+    elif no_category:
         statement = statement.where(col(Transaction.category_id).is_(None))
     elif category_id is not None:
         statement = statement.where(col(Transaction.category_id) == category_id)

@@ -96,6 +96,7 @@ def list_transactions(
     search: str | None = None,
     tag_id: int | None = None,
     no_category: bool = False,
+    no_subcategory: bool = False,
 ) -> list[Transaction]:
     return transaction_repo.list_(
         session,
@@ -108,6 +109,7 @@ def list_transactions(
         search=search,
         tag_id=tag_id,
         no_category=no_category,
+        no_subcategory=no_subcategory,
     )
 
 

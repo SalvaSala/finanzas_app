@@ -20,7 +20,8 @@ interface Props {
 }
 
 const ALL = "__all__";
-const NONE_CAT = "__none__"; // sin categoría
+const NONE_CAT = "__none__";
+const NONE_SUBCAT = "__none_sub__";
 
 export function TransactionFilters({ filters, onChange, accounts, categories, tags = [] }: Props) {
   const parentCategories = categories.filter((c) => c.parent_id === null);
@@ -30,6 +31,7 @@ export function TransactionFilters({ filters, onChange, accounts, categories, ta
     filters.type ||
     filters.category_id != null ||
     filters.no_category ||
+    filters.no_subcategory ||
     filters.account_id != null ||
     filters.tag_id != null;
 
@@ -39,15 +41,18 @@ export function TransactionFilters({ filters, onChange, accounts, categories, ta
 
   const categorySelectValue =
     filters.no_category ? NONE_CAT :
+    filters.no_subcategory ? NONE_SUBCAT :
     filters.category_id != null ? String(filters.category_id) : ALL;
 
   function handleCategoryChange(v: string) {
     if (v === NONE_CAT) {
-      onChange({ ...filters, category_id: undefined, no_category: true });
+      onChange({ ...filters, category_id: undefined, no_category: true, no_subcategory: undefined });
+    } else if (v === NONE_SUBCAT) {
+      onChange({ ...filters, category_id: undefined, no_category: undefined, no_subcategory: true });
     } else if (v === ALL) {
-      onChange({ ...filters, category_id: undefined, no_category: undefined });
+      onChange({ ...filters, category_id: undefined, no_category: undefined, no_subcategory: undefined });
     } else {
-      onChange({ ...filters, category_id: parseInt(v), no_category: undefined });
+      onChange({ ...filters, category_id: parseInt(v), no_category: undefined, no_subcategory: undefined });
     }
   }
 
@@ -88,6 +93,7 @@ export function TransactionFilters({ filters, onChange, accounts, categories, ta
         <SelectContent>
           <SelectItem value={ALL}>Todas las categorías</SelectItem>
           <SelectItem value={NONE_CAT}>Sin categoría</SelectItem>
+          <SelectItem value={NONE_SUBCAT}>Sin subcategoría</SelectItem>
           {parentCategories.map((c) => (
             <SelectItem key={c.id} value={String(c.id)}>
               {c.name}

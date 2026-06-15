@@ -42,7 +42,7 @@ export type CategoryAvgRow = components["schemas"]["CategoryAvgRow"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
->;
+> & { no_subcategory?: boolean };
 export type ImportResult = components["schemas"]["ImportResult"];
 export type CsvPreviewResult = components["schemas"]["CsvPreviewResult"];
 export type CsvImportMappedResult = components["schemas"]["CsvImportMappedResult"];
@@ -118,6 +118,7 @@ export const api = {
       if (params?.type != null) qs.set("type", params.type);
       if (params?.category_id != null) qs.set("category_id", String(params.category_id));
       if (params?.no_category) qs.set("no_category", "true");
+      if (params?.no_subcategory) qs.set("no_subcategory", "true");
       if (params?.account_id != null) qs.set("account_id", String(params.account_id));
       if (params?.search != null && params.search !== "")
         qs.set("search", params.search);

@@ -30,6 +30,7 @@ def list_transactions(
     type: TransactionType | None = Query(default=None),
     category_id: int | None = Query(default=None),
     no_category: bool = Query(default=False),
+    no_subcategory: bool = Query(default=False),
     account_id: int | None = Query(default=None),
     tag_id: int | None = Query(default=None),
     search: str | None = Query(default=None, max_length=200),
@@ -49,6 +50,7 @@ def list_transactions(
         search=search,
         tag_id=tag_id,
         no_category=no_category,
+        no_subcategory=no_subcategory,
     )
 
 
