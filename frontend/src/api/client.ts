@@ -58,6 +58,12 @@ export interface ColumnMapping {
   sign_convention?: string;  // "signed"
 }
 
+export interface ConceptSuggestion {
+  concept: string;
+  category_id: number | null;
+  subcategory_id: number | null;
+}
+
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     headers: { "Content-Type": "application/json", ...init?.headers },
@@ -165,6 +171,11 @@ export const api = {
         body,
       });
     },
+
+    suggestConcepts: (q: string) =>
+      apiFetch<ConceptSuggestion[]>(
+        `/api/transactions/concepts?q=${encodeURIComponent(q)}`,
+      ),
 
     csvImportMapped: (file: File, accountId: number, mapping: ColumnMapping) => {
       const body = new FormData();

@@ -236,6 +236,34 @@ def net_by_day(
     return [(row[0], Decimal(str(row[1]))) for row in rows]
 
 
+def suggest_concepts(
+    session: Session, q: str, limit: int = 8
+) -> list[tuple[str, int | None, int | None]]:
+    """Return up to `limit` distinct concepts matching `q`, with the category and subcategory
+    from the most recent transaction that used each concept."""
+    # Subquery: for each matching concept, find the most recent transaction id.
+    subq = (
+        select(
+            Transaction.concept,
+            func.max(Transaction.id).label("max_id"),
+        )
+        .where(col(Transaction.concept).ilike(f"%{q}%"))
+        .where(col(Transaction.type) != TransactionType.transfer)
+        .group_by(Transaction.concept)
+        .order_by(func.max(Transaction.date).desc(), func.max(Transaction.id).desc())
+        .limit(limit)
+        .subquery()
+    )
+    stmt = select(
+        Transaction.concept,
+        Transaction.category_id,
+        Transaction.subcategory_id,
+    ).join(subq, col(Transaction.id) == subq.c.max_id)
+
+    rows = session.exec(stmt).all()
+    return [(r[0], r[1], r[2]) for r in rows]
+
+
 def cumulative_net_before(session: Session, before_date: dt.date) -> Decimal:
     """Cumulative net balance (income − expense) for all transactions before a given date."""
     result = session.exec(

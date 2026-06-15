@@ -69,3 +69,9 @@ class ImportResult(BaseModel):
     imported: int
     skipped: int
     errors: list[str]
+
+
+class ConceptSuggestion(BaseModel):
+    concept: str
+    category_id: int | None
+    subcategory_id: int | None

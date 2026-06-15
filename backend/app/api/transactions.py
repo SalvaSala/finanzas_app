@@ -9,10 +9,11 @@ from sqlmodel import Session
 from app.core.db import get_session
 from app.models import Transaction
 from app.models.enums import TransactionType
+from app.repositories import transaction as transaction_repo
 from app.schemas import TransactionCreate, TransactionRead, TransactionUpdate
 from app.schemas.csv import ColumnMapping, CsvImportMappedResult, CsvPreviewResult
 from app.schemas.tag import TagRead
-from app.schemas.transaction import ImportResult
+from app.schemas.transaction import ConceptSuggestion, ImportResult
 from app.services import csv_io
 from app.services import tag as tag_service
 from app.services import transaction as transaction_service
@@ -126,6 +127,19 @@ async def import_transactions(
         content = raw.decode("latin-1")
     result = csv_io.import_csv(session, content)
     return ImportResult(**result.to_dict())
+
+
+@router.get("/concepts", response_model=list[ConceptSuggestion])
+def suggest_concepts(
+    q: str = Query(min_length=1, max_length=200),
+    limit: int = Query(default=8, ge=1, le=20),
+    session: Session = Depends(get_session),
+) -> list[ConceptSuggestion]:
+    rows = transaction_repo.suggest_concepts(session, q, limit)
+    return [
+        ConceptSuggestion(concept=concept, category_id=cat_id, subcategory_id=sub_id)
+        for concept, cat_id, sub_id in rows
+    ]
 
 
 @router.get("/{transaction_id}/tags", response_model=list[TagRead])

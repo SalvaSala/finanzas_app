@@ -6,8 +6,9 @@ import { toast } from "sonner";
 
 import { Repeat } from "lucide-react";
 
-import type { AccountRead, CategoryRead, TagRead, TransactionRead } from "@/api/client";
+import type { AccountRead, CategoryRead, ConceptSuggestion, TagRead, TransactionRead } from "@/api/client";
 import { useCreateTransaction, useUpdateTransaction } from "@/hooks/useTransactions";
+import { ConceptAutocomplete } from "./ConceptAutocomplete";
 import { useSetTransactionTags } from "@/hooks/useTags";
 import { todayIso } from "@/lib/format";
 
@@ -320,7 +321,16 @@ export function TransactionForm({
                 <FormItem>
                   <FormLabel>Concepto</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: Supermercado Mercadona" {...field} />
+                    <ConceptAutocomplete
+                      field={field}
+                      placeholder="Ej: Supermercado Mercadona"
+                      onSuggestionSelect={(s: ConceptSuggestion) => {
+                        if (s.category_id != null)
+                          form.setValue("category_id", String(s.category_id));
+                        if (s.subcategory_id != null)
+                          form.setValue("subcategory_id", String(s.subcategory_id));
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
