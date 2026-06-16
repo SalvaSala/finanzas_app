@@ -338,13 +338,9 @@ def get_category_averages(
             transaction_repo.sum_by_category(session, tx_type, current_start, current_end)
         )
         avg_map = dict(transaction_repo.sum_by_category(session, tx_type, avg_start, avg_end))
-        all_ids: set[int] = {
-            cid for cid in (set(current_map) | set(avg_map)) if cid is not None
-        }
+        all_ids: set[int] = {cid for cid in (set(current_map) | set(avg_map)) if cid is not None}
         parent_cat_ids = {
-            cid
-            for cid in all_ids
-            if cid in categories and categories[cid].parent_id is None
+            cid for cid in all_ids if cid in categories and categories[cid].parent_id is None
         }
         rows = [
             _build_row(cid, current_map.get(cid, Decimal(0)), avg_map.get(cid, Decimal(0)))
