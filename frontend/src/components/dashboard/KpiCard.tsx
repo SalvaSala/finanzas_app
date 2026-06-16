@@ -48,11 +48,11 @@ export function KpiCard({ title, amount, variant, change }: Props) {
         <CardDescription className="text-xs uppercase tracking-wide">{title}</CardDescription>
       </CardHeader>
       <CardContent>
-        <p className={cn("text-2xl font-bold tabular-nums", colorClass)}>{display}</p>
+        <p className={cn("text-3xl font-bold tabular-nums", colorClass)}>{display}</p>
         {change != null && (
           <div
             className={cn(
-              "mt-1 flex items-center gap-1 text-xs font-medium",
+              "mt-1.5 flex items-center gap-1 text-sm font-medium",
               changeIsGood ? "text-income" : "text-expense",
             )}
           >

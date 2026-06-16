@@ -116,7 +116,7 @@ function DonutView({
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
       </div>
 
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={240}>
         <PieChart>
           <Pie
             data={items}
@@ -125,7 +125,7 @@ function DonutView({
             cx="50%"
             cy="50%"
             innerRadius="50%"
-            outerRadius="80%"
+            outerRadius="85%"
             paddingAngle={2}
             shape={sectorShape}
             onClick={
