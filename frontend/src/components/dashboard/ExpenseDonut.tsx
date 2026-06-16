@@ -20,6 +20,7 @@ interface ChartEntry {
   value: number;
   color: string;
   categoryId: number | null;
+  icon: string | null;
 }
 
 interface Props {
@@ -68,7 +69,10 @@ function CustomTooltip({
 
   return (
     <div className="rounded-lg border bg-card px-3 py-2 text-sm shadow">
-      <p className="font-medium">{entry.name}</p>
+      <p className="font-medium">
+        {entry.icon && <span className="mr-1">{entry.icon}</span>}
+        {entry.name}
+      </p>
       <p className="text-muted-foreground">
         {EUR.format(entry.value)} · {pct}%
       </p>
@@ -158,7 +162,10 @@ function DonutView({
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="flex-1 truncate">{entry.name}</span>
+              <span className="flex-1 truncate">
+                {entry.icon && <span className="mr-1">{entry.icon}</span>}
+                {entry.name}
+              </span>
               <span className="tabular-nums text-muted-foreground">{pct}%</span>
               <span className="tabular-nums font-medium">{EUR.format(entry.value)}</span>
             </li>
@@ -211,6 +218,7 @@ export function ExpenseDonut({
     value: parseFloat(item.total),
     color: item.color ?? FALLBACK[i % FALLBACK.length],
     categoryId: item.category_id,
+    icon: item.icon,
   }));
 
   // Drill-down view
@@ -237,6 +245,7 @@ export function ExpenseDonut({
         value: parseFloat(item.total),
         color: item.color ?? FALLBACK[i % FALLBACK.length],
         categoryId: item.category_id,
+        icon: item.icon,
       })) ?? [];
 
     if (subItems.length === 0) {

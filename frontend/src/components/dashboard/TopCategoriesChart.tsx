@@ -83,7 +83,7 @@ export function TopCategoriesChart({ expenseData, incomeData }: Props) {
     .sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
     .slice(0, 10)
     .map((item, i) => ({
-      name: item.name,
+      name: item.icon ? `${item.icon} ${item.name}` : item.name,
       value: parseFloat(item.total),
       color: item.color ?? FALLBACK[i % FALLBACK.length],
     }));

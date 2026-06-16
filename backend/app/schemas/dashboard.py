@@ -11,6 +11,7 @@ class CategoryAmount(BaseModel):
     category_id: int | None
     name: str
     color: str | None
+    icon: str | None
     total: Decimal
 
 

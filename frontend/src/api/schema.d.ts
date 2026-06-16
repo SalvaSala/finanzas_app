@@ -186,6 +186,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/transactions/concepts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggest Concepts */
+        get: operations["suggest_concepts_api_transactions_concepts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transactions/{transaction_id}/tags": {
         parameters: {
             query?: never;
@@ -847,6 +864,8 @@ export interface components {
             name: string;
             /** Color */
             color: string | null;
+            /** Icon */
+            icon: string | null;
             /** Total */
             total: string;
         };
@@ -916,6 +935,15 @@ export interface components {
             color?: string | null;
             /** Icon */
             icon?: string | null;
+        };
+        /** ConceptSuggestion */
+        ConceptSuggestion: {
+            /** Concept */
+            concept: string;
+            /** Category Id */
+            category_id: number | null;
+            /** Subcategory Id */
+            subcategory_id: number | null;
         };
         /** CsvImportMappedResult */
         CsvImportMappedResult: {
@@ -1596,6 +1624,7 @@ export interface operations {
                 type?: components["schemas"]["TransactionType"] | null;
                 category_id?: number | null;
                 no_category?: boolean;
+                no_subcategory?: boolean;
                 account_id?: number | null;
                 tag_id?: number | null;
                 search?: string | null;
@@ -1781,6 +1810,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_concepts_api_transactions_concepts_get: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConceptSuggestion"][];
                 };
             };
             /** @description Validation Error */

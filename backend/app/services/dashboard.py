@@ -76,6 +76,7 @@ def get_summary(session: Session, year: int, month: int | None) -> DashboardSumm
                     else UNCATEGORIZED_LABEL
                 ),
                 color=categories[category_id].color if category_id in categories else None,
+                icon=categories[category_id].icon if category_id in categories else None,
                 total=total,
             )
             for category_id, total in rows
@@ -123,6 +124,11 @@ def get_subcategory_breakdown(
             ),
             color=(
                 categories[subcat_id].color
+                if subcat_id is not None and subcat_id in categories
+                else None
+            ),
+            icon=(
+                categories[subcat_id].icon
                 if subcat_id is not None and subcat_id in categories
                 else None
             ),

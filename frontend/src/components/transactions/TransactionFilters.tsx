@@ -96,7 +96,7 @@ export function TransactionFilters({ filters, onChange, accounts, categories, ta
           <SelectItem value={NONE_SUBCAT}>Sin subcategoría</SelectItem>
           {parentCategories.map((c) => (
             <SelectItem key={c.id} value={String(c.id)}>
-              {c.name}
+              {c.icon ? `${c.icon} ` : ""}{c.name}
             </SelectItem>
           ))}
         </SelectContent>

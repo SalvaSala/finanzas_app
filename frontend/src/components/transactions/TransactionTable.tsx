@@ -44,8 +44,10 @@ function CategoryCell({
   const cat = categories.find((c) => c.id === categoryId);
   const sub = categories.find((c) => c.id === subcategoryId);
   if (!cat) return <span className="text-muted-foreground">—</span>;
+  const icon = sub?.icon ?? cat.icon;
   return (
     <span>
+      {icon && <span className="mr-1">{icon}</span>}
       {cat.name}
       {sub && <span className="text-muted-foreground"> › {sub.name}</span>}
     </span>
