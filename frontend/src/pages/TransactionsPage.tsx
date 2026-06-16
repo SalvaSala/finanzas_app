@@ -16,8 +16,34 @@ import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const now = new Date();
+
+function TransactionTableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border">
+      <div className="flex items-center gap-4 border-b bg-muted/40 px-4 py-3">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 flex-1" />
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-5 w-14 rounded-full" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function TransactionsPage() {
   const location = useLocation();
@@ -139,7 +165,7 @@ export function TransactionsPage() {
       <Separator />
 
       {loading ? (
-        <div className="py-24 text-center text-muted-foreground">Cargando…</div>
+        <TransactionTableSkeleton />
       ) : (
         <TransactionTable
           transactions={transactions}

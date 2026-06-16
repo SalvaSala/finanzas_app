@@ -14,8 +14,56 @@ import { MonthlyBarChart } from "@/components/dashboard/MonthlyBarChart";
 import { BalanceEvolutionChart } from "@/components/dashboard/BalanceEvolutionChart";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const now = new Date();
+
+function DashboardSkeleton() {
+  return (
+    <>
+      {/* KPI cards */}
+      <div className="grid grid-cols-3 gap-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="space-y-3 rounded-xl border bg-card p-5">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+        ))}
+      </div>
+
+      {/* Donuts */}
+      <div className="grid grid-cols-2 gap-6">
+        {[0, 1].map((i) => (
+          <div key={i} className="space-y-3 rounded-xl border bg-card p-5">
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="mx-auto h-48 w-48 rounded-full" />
+          </div>
+        ))}
+      </div>
+
+      {/* Top categories + averages */}
+      <div className="grid grid-cols-2 gap-6">
+        {[0, 1].map((i) => (
+          <div key={i} className="space-y-3 rounded-xl border bg-card p-5">
+            <Skeleton className="h-4 w-44" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        ))}
+      </div>
+
+      {/* Monthly charts */}
+      <div className="grid grid-cols-2 gap-6">
+        {[0, 1].map((i) => (
+          <div key={i} className="space-y-3 rounded-xl border bg-card p-5">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-52 w-full" />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
 
 export function DashboardPage() {
   const [year, setYear] = useState(now.getFullYear());
@@ -67,7 +115,7 @@ export function DashboardPage() {
       <Separator />
 
       {isLoading || !summary ? (
-        <div className="py-24 text-center text-muted-foreground">Cargando…</div>
+        <DashboardSkeleton />
       ) : (
         <>
           {/* KPI cards */}
