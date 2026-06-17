@@ -53,7 +53,7 @@ _FALLBACK_RGB: list[tuple[int, int, int]] = [
 
 def _fmt_money(amount: Decimal) -> str:
     formatted = f"{abs(amount):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    return f"{formatted} EUR"
+    return f"{formatted} €"
 
 
 def _period_label(year: int, month: int | None) -> str:
