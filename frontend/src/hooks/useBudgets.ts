@@ -13,6 +13,17 @@ export function useBudgetProgress(year: number, month?: number) {
   });
 }
 
+/** Número de presupuestos superados en el mes actual (para el badge del menú). */
+export function useBudgetExceededCount() {
+  const now = new Date();
+  return useQuery({
+    queryKey: ["budgets", "progress", now.getFullYear(), now.getMonth() + 1],
+    queryFn: () => api.budgets.progress(now.getFullYear(), now.getMonth() + 1),
+    select: (data) => data.filter((b) => b.exceeded).length,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useCreateBudget() {
   const qc = useQueryClient();
   return useMutation({

@@ -12,9 +12,11 @@ import {
   Sun,
   Moon,
   Settings,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
+import { useBudgetExceededCount } from "@/hooks/useBudgets";
 import { Button } from "@/components/ui/button";
 
 const NAV = [
@@ -31,6 +33,7 @@ const NAV = [
 
 export function AppLayout() {
   const { theme, toggle } = useTheme();
+  const { data: exceededCount = 0 } = useBudgetExceededCount();
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -51,8 +54,14 @@ export function AppLayout() {
                 )
               }
             >
-              <Icon className="h-4 w-4" />
-              {label}
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{label}</span>
+              {to === "/presupuestos" && exceededCount > 0 && (
+                <span className="flex items-center gap-0.5 rounded-full bg-expense/15 px-1.5 py-0.5 text-[10px] font-bold leading-none text-expense">
+                  <AlertTriangle className="h-2.5 w-2.5" />
+                  {exceededCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
