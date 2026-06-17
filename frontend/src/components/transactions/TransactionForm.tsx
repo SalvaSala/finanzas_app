@@ -411,7 +411,7 @@ export function TransactionForm({
                         <SelectContent>
                           {parentCategories.map((c) => (
                             <SelectItem key={c.id} value={c.id.toString()}>
-                              {c.icon ? `${c.icon} ` : ""}{c.name}
+                              {c.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -439,7 +439,7 @@ export function TransactionForm({
                         <SelectContent>
                           {subcategories.map((c) => (
                             <SelectItem key={c.id} value={c.id.toString()}>
-                              {c.icon ? `${c.icon} ` : ""}{c.name}
+                              {c.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
