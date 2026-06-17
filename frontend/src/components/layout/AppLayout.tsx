@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useMatch } from "react-router-dom";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -34,6 +34,7 @@ const NAV = [
 export function AppLayout() {
   const { theme, toggle } = useTheme();
   const { data: exceededCount = 0 } = useBudgetExceededCount();
+  const budgetsActive = !!useMatch("/presupuestos");
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -57,7 +58,14 @@ export function AppLayout() {
               <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{label}</span>
               {to === "/presupuestos" && exceededCount > 0 && (
-                <span className="flex items-center gap-0.5 rounded-full bg-expense/15 px-1.5 py-0.5 text-[10px] font-bold leading-none text-expense">
+                <span
+                  className={cn(
+                    "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                    budgetsActive
+                      ? "bg-white/25 text-white"
+                      : "bg-expense/15 text-expense",
+                  )}
+                >
                   <AlertTriangle className="h-2.5 w-2.5" />
                   {exceededCount}
                 </span>
