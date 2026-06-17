@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronRight, Smile, X } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 
@@ -28,6 +28,143 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// ── Emoji picker ─────────────────────────────────────────────────────────────
+
+const EMOJI_GROUPS: { label: string; emojis: string[] }[] = [
+  {
+    label: "Hogar",
+    emojis: ["🏠", "🏡", "🛋️", "🪑", "🛏️", "🚿", "🪴", "💡", "🔧", "🧹", "🪣", "🧺"],
+  },
+  {
+    label: "Alimentación",
+    emojis: ["🍔", "🍕", "🥗", "🍣", "🥩", "🍞", "🥛", "☕", "🍷", "🛒", "🧃", "🍎"],
+  },
+  {
+    label: "Transporte",
+    emojis: ["🚗", "🚕", "🚌", "🚇", "✈️", "🚂", "🛵", "🚲", "⛽", "🅿️", "🛣️", "🚘"],
+  },
+  {
+    label: "Salud",
+    emojis: ["💊", "🏥", "🩺", "🦷", "💉", "🩹", "🧘", "🏋️", "🩻", "👓", "🧬", "❤️‍🩹"],
+  },
+  {
+    label: "Ocio",
+    emojis: ["🎬", "🎮", "🎵", "📚", "⚽", "🎾", "🏊", "🎭", "🎨", "🎲", "🏖️", "🎡"],
+  },
+  {
+    label: "Viajes",
+    emojis: ["🌍", "🗺️", "🧳", "🏨", "🗼", "🏝️", "⛷️", "🎿", "🛶", "🏕️", "📷", "🗽"],
+  },
+  {
+    label: "Educación",
+    emojis: ["🎓", "📖", "✏️", "🏫", "💻", "🔬", "📐", "🧪", "📝", "🗂️", "📊", "🌐"],
+  },
+  {
+    label: "Trabajo",
+    emojis: ["💼", "🖥️", "📱", "📞", "🖨️", "🗃️", "📋", "🏢", "💰", "📈", "🤝", "⌨️"],
+  },
+  {
+    label: "Familia & Personal",
+    emojis: ["👶", "👧", "👦", "🐶", "🐱", "💍", "🎁", "🎂", "👗", "👟", "💇", "💅"],
+  },
+  {
+    label: "Finanzas",
+    emojis: ["💳", "🏦", "💸", "💵", "🪙", "📉", "📈", "🏧", "🧾", "💹", "🤑", "🔐"],
+  },
+  {
+    label: "Servicios",
+    emojis: ["📡", "📺", "💧", "⚡", "🔥", "🌐", "📬", "🛡️", "☂️", "🗑️", "♻️", "🔑"],
+  },
+  {
+    label: "Ingresos",
+    emojis: ["💼", "💰", "🏷️", "🎯", "🏆", "⭐", "🌟", "✨", "🎉", "🤝", "📦", "🛍️"],
+  },
+];
+
+interface EmojiPickerProps {
+  value: string;
+  onChange: (emoji: string) => void;
+}
+
+function EmojiPicker({ value, onChange }: EmojiPickerProps) {
+  const [open, setOpen] = useState(false);
+
+  function handleSelect(emoji: string) {
+    onChange(emoji);
+    setOpen(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* Fila: botón toggle + input + limpiar */}
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 shrink-0 text-base"
+          title={open ? "Cerrar selector" : "Elegir emoji"}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {value ? value : <Smile className="h-4 w-4 text-muted-foreground" />}
+        </Button>
+        <Input
+          id="cat-icon"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="O pega uno aquí…"
+          className="flex-1"
+          maxLength={4}
+        />
+        {value && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0 text-muted-foreground"
+            onClick={() => { onChange(""); setOpen(false); }}
+            title="Quitar icono"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Grid inline — se expande debajo sin salir del Dialog */}
+      {open && (
+        <div className="max-h-56 overflow-y-auto rounded-md border bg-muted/40 p-2 space-y-2">
+          {EMOJI_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </p>
+              <div className="flex flex-wrap gap-0.5">
+                {group.emojis.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => handleSelect(emoji)}
+                    className={`rounded p-1 text-lg leading-none transition-colors hover:bg-accent ${
+                      value === emoji ? "bg-accent ring-2 ring-primary ring-offset-1" : ""
+                    }`}
+                    title={emoji}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[11px] text-muted-foreground">
+        Elige del selector o pega cualquier emoji copiado de internet.
+      </p>
+    </div>
+  );
+}
 
 // ── Color swatches ────────────────────────────────────────────────────────────
 
@@ -129,13 +266,7 @@ function CategoryForm({ state, onClose, onSave, saving }: CategoryFormProps) {
 
           <div className="space-y-1.5">
             <Label htmlFor="cat-icon">Icono (emoji, opcional)</Label>
-            <Input
-              id="cat-icon"
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              placeholder="🍔"
-              className="w-24"
-            />
+            <EmojiPicker value={icon} onChange={setIcon} />
           </div>
         </div>
 
