@@ -27,7 +27,13 @@ if not FRONTEND_DIST.exists():
 
 # Incluir los estáticos compilados del frontend dentro del paquete.
 # En tiempo de ejecución se localizan con resource_path() (ver core/paths.py).
-datas = [(str(FRONTEND_DIST), "frontend/dist")]
+# También se incluye el directorio alembic/ con las migraciones SQL,
+# necesario para que run_migrations() funcione en el primer arranque.
+ALEMBIC_DIR = ROOT / "backend" / "alembic"
+datas = [
+    (str(FRONTEND_DIST), "frontend/dist"),
+    (str(ALEMBIC_DIR), "alembic"),
+]
 
 # Dependencias que PyInstaller no siempre detecta solo.
 hiddenimports = (
