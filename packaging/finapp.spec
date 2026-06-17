@@ -12,7 +12,7 @@
 
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_all
 
 # SPECPATH lo define PyInstaller: es la carpeta de este .spec (packaging/)
 ROOT = Path(SPECPATH).parent
@@ -35,18 +35,24 @@ datas = [
     (str(ALEMBIC_DIR), "alembic"),
 ]
 
+# gi (PyGObject) no se detecta automáticamente — necesario para pywebview GTK.
+gi_datas, gi_binaries, gi_hiddenimports = collect_all("gi")
+pycairo_datas, pycairo_binaries, pycairo_hiddenimports = collect_all("cairo")
+
 # Dependencias que PyInstaller no siempre detecta solo.
 hiddenimports = (
     collect_submodules("uvicorn")
     + collect_submodules("app")          # tu paquete backend
     + ["app.main"]
+    + gi_hiddenimports
+    + pycairo_hiddenimports
 )
 
 a = Analysis(
     [str(ENTRY)],
     pathex=[str(ROOT / "backend")],      # para que `import app.main` funcione
-    binaries=[],
-    datas=datas,
+    binaries=gi_binaries + pycairo_binaries,
+    datas=datas + gi_datas + pycairo_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],

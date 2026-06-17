@@ -3,6 +3,12 @@
 #     bash packaging/build_linux.sh
 set -euo pipefail
 
+# Activar nvm y Node 20 (requerido por Tailwind v4 / react-router v7)
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+# shellcheck source=/dev/null
+[[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+nvm use 20
+
 echo "==> 1/3  Compilando el frontend (React)"
 pushd frontend >/dev/null
 npm ci
