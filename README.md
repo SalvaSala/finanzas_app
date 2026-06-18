@@ -35,11 +35,57 @@ npm run dev
 
 Abre la URL que indique Vite en el navegador. El frontend habla con la API del backend.
 
-## Empaquetado (instalable de escritorio)
+## Empaquetado (instalable Linux AppImage)
+
+### Build completo (primera vez o tras cambios grandes)
 
 ```bash
-cd frontend && npm run build       # genera frontend/dist
-# luego PyInstaller (ver carpeta packaging/)
+# 1. Frontend
+cd frontend
+nvm use 20          # Node 20+ necesario para Tailwind v4
+npm run build       # genera frontend/dist
+
+# 2. Bundle PyInstaller (desde backend/)
+cd ../backend
+uv run pyinstaller ../packaging/finapp.spec --noconfirm
+# resultado: backend/dist/FinApp/
+
+# 3. Copiar al directorio raíz y generar AppImage
+cd ..
+cp -r backend/dist/FinApp dist/FinApp    # sobreescribe el anterior
+bash packaging/build_appimage.sh
+# resultado: dist/FinApp-x86_64.AppImage  (~172 MB)
+```
+
+### Rebuild rápido tras cambios en el frontend
+
+Solo el frontend cambió (componentes, estilos, lógica UI):
+
+```bash
+cd frontend && nvm use 20 && npm run build
+cd ../backend && uv run pyinstaller ../packaging/finapp.spec --noconfirm
+cd .. && cp -r backend/dist/FinApp dist/FinApp && bash packaging/build_appimage.sh
+```
+
+### Rebuild rápido tras cambios solo en el backend
+
+Solo el backend cambió (Python, API, modelos):
+
+```bash
+cd backend && uv run pyinstaller ../packaging/finapp.spec --noconfirm
+cd .. && cp -r backend/dist/FinApp dist/FinApp && bash packaging/build_appimage.sh
+```
+
+> **Nota:** `build_appimage.sh` descarga `appimagetool` la primera vez y lo guarda en
+> `dist/appimagetool-x86_64.AppImage` para reutilizarlo en builds posteriores.
+
+### Base de datos en el AppImage
+
+La app empaquetada guarda la base de datos en `~/.local/share/FinApp/finapp.db`
+(se crea automáticamente en el primer arranque). Para usar los datos de desarrollo:
+
+```bash
+cp data/finapp.db ~/.local/share/FinApp/finapp.db   # con la app cerrada
 ```
 
 ## Documentación del proyecto
