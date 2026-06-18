@@ -10,9 +10,10 @@
 # Si al ejecutar el binario falta algún módulo o archivo de datos, añádelo
 # a `hiddenimports` o a `datas` respectivamente.
 
+import os
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules, collect_all
+from PyInstaller.utils.hooks import collect_submodules
 
 # SPECPATH lo define PyInstaller: es la carpeta de este .spec (packaging/)
 ROOT = Path(SPECPATH).parent
@@ -35,9 +36,39 @@ datas = [
     (str(ALEMBIC_DIR), "alembic"),
 ]
 
-# gi (PyGObject) no se detecta automáticamente — necesario para pywebview GTK.
-gi_datas, gi_binaries, gi_hiddenimports = collect_all("gi")
-pycairo_datas, pycairo_binaries, pycairo_hiddenimports = collect_all("cairo")
+# ── gi / PyGObject ────────────────────────────────────────────────────────────
+# Solo incluimos los módulos Python de gi (no coleccionar datos: evita
+# arrastrar 1.5 GB de iconos GTK y temas que no son necesarios en el bundle).
+# Los typelibs que necesita pywebview se añaden manualmente; un runtime hook
+# (rthook_gi_typelib.py) ajusta GI_TYPELIB_PATH al arranque del binario.
+TYPELIB_SRC = "/usr/lib/x86_64-linux-gnu/girepository-1.0"
+NEEDED_TYPELIBS = [
+    "WebKit2-4.0",
+    "WebKit2WebExtension-4.0",
+    "JavaScriptCore-4.0",
+    "Soup-2.4",
+    "Gtk-3.0",
+    "Gdk-3.0",
+    "GdkPixbuf-2.0",
+    "GdkX11-3.0",
+    "Gio-2.0",
+    "GLib-2.0",
+    "GObject-2.0",
+    "GModule-2.0",
+    "Pango-1.0",
+    "PangoCairo-1.0",
+    "Atk-1.0",
+    "HarfBuzz-0.0",
+    "cairo-1.0",
+]
+gi_typelib_datas = [
+    (os.path.join(TYPELIB_SRC, f"{name}.typelib"), "girepository-1.0")
+    for name in NEEDED_TYPELIBS
+    if os.path.exists(os.path.join(TYPELIB_SRC, f"{name}.typelib"))
+]
+
+gi_hiddenimports = collect_submodules("gi")
+pycairo_hiddenimports = collect_submodules("cairo")
 
 # Dependencias que PyInstaller no siempre detecta solo.
 hiddenimports = (
@@ -51,11 +82,19 @@ hiddenimports = (
 a = Analysis(
     [str(ENTRY)],
     pathex=[str(ROOT / "backend")],      # para que `import app.main` funcione
-    binaries=gi_binaries + pycairo_binaries,
-    datas=datas + gi_datas + pycairo_datas,
+    binaries=[],
+    datas=datas + gi_typelib_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
-    runtime_hooks=[],
+    hooksconfig={
+        "gi": {
+            # Solo tema base (sin Adwaita ni otros — evita 1.5 GB de iconos)
+            "icons": ["hicolor"],
+            "themes": ["Default"],
+            "languages": [],
+        }
+    },
+    runtime_hooks=[str(ROOT / "packaging" / "rthook_gi_typelib.py")],
     excludes=[],
     noarchive=False,
 )
