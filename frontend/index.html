@@ -5,12 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FinApp</title>
     <script>
+      // Polyfill localStorage para contextos embebidos (pywebview/WebKit2GTK)
+      // donde localStorage puede ser null en lugar del objeto Storage esperado.
       (function () {
-        var stored = localStorage.getItem("finapp-theme");
-        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (stored === "dark" || (!stored && prefersDark)) {
-          document.documentElement.classList.add("dark");
+        if (!window.localStorage) {
+          var _mem = {};
+          try {
+            Object.defineProperty(window, "localStorage", {
+              value: {
+                getItem: function (k) { return Object.prototype.hasOwnProperty.call(_mem, k) ? _mem[k] : null; },
+                setItem: function (k, v) { _mem[k] = String(v); },
+                removeItem: function (k) { delete _mem[k]; },
+                clear: function () { _mem = {}; },
+                key: function (i) { return Object.keys(_mem)[i] || null; },
+                get length() { return Object.keys(_mem).length; },
+              },
+              writable: false,
+              configurable: true,
+            });
+          } catch (e) {}
         }
+        try {
+          var stored = localStorage.getItem("finapp-theme");
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (stored === "dark" || (!stored && prefersDark)) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
       })();
     </script>
   </head>
