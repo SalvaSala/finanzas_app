@@ -37,6 +37,13 @@ SELF=$(readlink -f "$0")
 HERE="${SELF%/*}"
 export PATH="${HERE}:${PATH}"
 export LD_LIBRARY_PATH="${HERE}/_internal:${LD_LIBRARY_PATH:-}"
+
+# Evitar que GStreamer escanee toda _internal/ buscando plugins de media
+# (encuentra .so de Python/PIL y lanza cientos de warnings que bloquean WebKit).
+export GST_PLUGIN_PATH="${HERE}/_internal/gst_plugins"
+export GST_PLUGIN_SYSTEM_PATH_1_0=""
+export GST_REGISTRY_FORK="no"
+
 exec "${HERE}/FinApp" "$@"
 APPRUN
 chmod +x "$APP_DIR/AppRun"
