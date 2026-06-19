@@ -4,38 +4,62 @@ Punto de entrada de la app de escritorio (FinApp).
 Arranca el servidor FastAPI en un hilo en segundo plano y abre una ventana
 nativa de escritorio (pywebview) que apunta al servidor local. Este es el
 archivo que ejecuta el usuario final cuando hace doble clic en el instalable.
-
-NOTA: en el repositorio real, este archivo puede vivir en `backend/app/desktop.py`
-en lugar de en `packaging/`. Si lo mueves, ajusta la ruta del entry-point en
-`finapp.spec`. Aquí lo dejamos en `packaging/` como plantilla de arranque.
-
-Requiere que `app.main:app` (FastAPI) esté configurado para servir los estáticos
-del frontend en producción. Ver packaging/README.md.
 """
 from __future__ import annotations
 
+import logging
+import os
 import socket
+import sys
 import threading
 import time
+import traceback
+from pathlib import Path
 
 import uvicorn
-import webview  # pywebview
+import webview
 
 HOST = "127.0.0.1"
 PORT = 8765
 
+_server_error: Exception | None = None
+
+
+def _log_dir() -> Path:
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA", os.path.expanduser("~"))
+    else:
+        base = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    path = Path(base) / "FinApp"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _setup_logging() -> None:
+    log_file = _log_dir() / "finapp.log"
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename=str(log_file),
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
 
 def _run_server() -> None:
-    # import perezoso para que PyInstaller resuelva bien las rutas
-    from app.main import app
+    global _server_error
+    try:
+        from app.main import app
 
-    uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
+        uvicorn.run(app, host=HOST, port=PORT, log_level="debug")
+    except Exception as exc:
+        _server_error = exc
+        logging.exception("Error al iniciar el servidor")
 
 
-def _wait_for_server(timeout: float = 15.0) -> bool:
-    """Espera a que el servidor acepte conexiones antes de abrir la ventana."""
+def _wait_for_server(timeout: float = 30.0) -> bool:
     start = time.time()
     while time.time() - start < timeout:
+        if _server_error is not None:
+            return False
         try:
             with socket.create_connection((HOST, PORT), timeout=0.5):
                 return True
@@ -45,12 +69,29 @@ def _wait_for_server(timeout: float = 15.0) -> bool:
 
 
 def main() -> None:
+    _setup_logging()
+    logging.info("=== FinApp iniciando ===")
+
     server_thread = threading.Thread(target=_run_server, daemon=True)
     server_thread.start()
 
     if not _wait_for_server():
-        raise RuntimeError("El servidor no arrancó a tiempo")
+        log_path = _log_dir() / "finapp.log"
+        if _server_error is not None:
+            logging.error("Servidor no arrancó: %s", _server_error)
+        detail = (
+            f"El servidor no pudo arrancar.\n"
+            f"Revisa el archivo de log para más detalles:\n{log_path}"
+        )
+        import tkinter as tk
+        from tkinter import messagebox
 
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror("Error FinApp", detail)
+        sys.exit(1)
+
+    logging.info("Servidor listo, abriendo ventana...")
     webview.create_window(
         "FinApp",
         f"http://{HOST}:{PORT}",
