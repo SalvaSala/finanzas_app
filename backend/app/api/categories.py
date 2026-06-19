@@ -17,9 +17,7 @@ def list_categories(session: Session = Depends(get_session)) -> list[Category]:
 
 
 @router.get("/{category_id}/delete-info", response_model=CategoryDeleteInfo)
-def delete_info(
-    category_id: int, session: Session = Depends(get_session)
-) -> CategoryDeleteInfo:
+def delete_info(category_id: int, session: Session = Depends(get_session)) -> CategoryDeleteInfo:
     if category_repo.get(session, category_id) is None:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
     return CategoryDeleteInfo(

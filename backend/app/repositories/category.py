@@ -79,9 +79,7 @@ def count_children(session: Session, category_id: int) -> int:
 def count_affected_transactions(session: Session, category_id: int) -> int:
     """Count transactions that reference this category or any of its subcategories."""
     child_ids = list(
-        session.exec(
-            select(Category.id).where(col(Category.parent_id) == category_id)
-        ).all()
+        session.exec(select(Category.id).where(col(Category.parent_id) == category_id)).all()
     )
     all_ids = [category_id, *child_ids]
     result = session.exec(
