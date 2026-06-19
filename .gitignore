@@ -16,6 +16,8 @@ frontend/dist/
 # NO se versionan: se regeneran. Los instalables van a "Releases".
 /build/
 /dist/
+backend/build/
+backend/dist/
 *.manifest
 
 # ─── Base de datos local y datos ────────────────────
