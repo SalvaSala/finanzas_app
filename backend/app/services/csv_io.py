@@ -328,25 +328,29 @@ def _detect_separator(content: str) -> str:
 
 
 def _parse_date(val: str, fmt: str) -> dt.date:
-    attempts: list[str] = []
+    """Try ISO first, then DMY, then MDY.
+
+    DMY is tried before MDY because the app targets Spanish-speaking users
+    where DD/MM/YYYY is the standard format.
+    """
     if fmt in ("auto", "iso"):
         try:
             return dt.date.fromisoformat(val)
         except ValueError:
             if fmt == "iso":
-                attempts.append("YYYY-MM-DD")
-    if fmt in ("auto", "mdy"):
-        try:
-            return dt.datetime.strptime(val, "%m/%d/%Y").date()
-        except ValueError:
-            if fmt == "mdy":
-                attempts.append("MM/DD/YYYY")
+                raise ValueError(f"Fecha inválida: '{val}'. Se esperaba YYYY-MM-DD.") from None
     if fmt in ("auto", "dmy"):
         try:
             return dt.datetime.strptime(val, "%d/%m/%Y").date()
         except ValueError:
             if fmt == "dmy":
-                attempts.append("DD/MM/YYYY")
+                raise ValueError(f"Fecha inválida: '{val}'. Se esperaba DD/MM/YYYY.") from None
+    if fmt in ("auto", "mdy"):
+        try:
+            return dt.datetime.strptime(val, "%m/%d/%Y").date()
+        except ValueError:
+            if fmt == "mdy":
+                raise ValueError(f"Fecha inválida: '{val}'. Se esperaba MM/DD/YYYY.") from None
     raise ValueError(f"Fecha inválida: '{val}'.")
 
 
@@ -387,7 +391,11 @@ def _resolve_category(
     cats_by_name: dict[str, Category],
     all_categories: list[Category],
 ) -> tuple[int | None, int | None]:
-    """Resolve 'Parent:Child' or 'Parent' to (category_id, subcategory_id).
+    """Resolve 'Parent:Child' or 'Name' to (category_id, subcategory_id).
+
+    When *Name* matches a subcategory directly (e.g. 'Supermercado' instead of
+    'Alimentación:Supermercado') the function detects it and returns the parent
+    as ``category_id`` and the subcategory as ``subcategory_id``.
 
     Returns (None, None) when no match is found — caller treats as uncategorized.
     """
@@ -406,7 +414,9 @@ def _resolve_category(
         )
         return parent.id, (child.id if child else None)
 
-    parent = cats_by_name.get(cat_raw.lower())
-    if parent is None:
+    cat = cats_by_name.get(cat_raw.lower())
+    if cat is None:
         return None, None
-    return parent.id, None
+    if cat.parent_id is not None:
+        return cat.parent_id, cat.id
+    return cat.id, None
