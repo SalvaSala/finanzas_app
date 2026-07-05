@@ -40,6 +40,7 @@ def list_(
     limit: int | None = None,
     transaction_type: TransactionType | None = None,
     category_id: int | None = None,
+    subcategory_id: int | None = None,
     account_id: int | None = None,
     search: str | None = None,
     tag_id: int | None = None,
@@ -54,7 +55,9 @@ def list_(
         statement = statement.where(col(Transaction.date) <= end)
     if transaction_type is not None:
         statement = statement.where(col(Transaction.type) == transaction_type)
-    if no_subcategory:
+    if subcategory_id is not None:
+        statement = statement.where(col(Transaction.subcategory_id) == subcategory_id)
+    elif no_subcategory:
         has_subcategories = exists().where(
             col(Category.parent_id) == col(Transaction.category_id)
         )
