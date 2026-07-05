@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -73,6 +73,25 @@ export function TransactionsPage() {
   const { data: accounts = [], isLoading: loadingAcc } = useAccounts();
   const { data: categories = [] } = useCategories();
   const { data: tags = [] } = useTags();
+
+  const total = useMemo(
+    () =>
+      transactions.reduce(
+        (sum, t) => sum + parseFloat(t.amount) * (t.type === "expense" ? -1 : 1),
+        0,
+      ),
+    [transactions],
+  );
+
+  const hasExtraFilters =
+    filters.search != null ||
+    filters.type != null ||
+    filters.category_id != null ||
+    filters.subcategory_id != null ||
+    filters.no_category ||
+    filters.no_subcategory ||
+    filters.account_id != null ||
+    filters.tag_id != null;
 
   function openCreate() {
     setEditing(undefined);
@@ -163,6 +182,41 @@ export function TransactionsPage() {
       />
 
       <Separator />
+
+      {hasExtraFilters && !loading && (
+        <div
+          className="relative overflow-hidden rounded-lg border bg-card py-2.5 pl-4 pr-5 shadow-xs"
+          style={{ animation: "fade-slide-in 0.25s ease-out" }}
+        >
+          <div
+            className="absolute left-0 top-0 h-full w-0.5"
+            style={{
+              backgroundColor:
+                total > 0 ? "var(--income)" : total < 0 ? "var(--expense)" : "var(--muted-foreground)",
+            }}
+          />
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Total
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground/50">
+                {transactions.length} transaccion{transactions.length !== 1 ? "es" : ""}
+              </p>
+            </div>
+            <span
+              className="shrink-0 text-xl font-bold tabular-nums leading-none"
+              style={{
+                color:
+                  total > 0 ? "var(--income)" : total < 0 ? "var(--expense)" : "var(--foreground)",
+              }}
+            >
+              {total > 0 ? "+" : ""}
+              {new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(total)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <TransactionTableSkeleton />

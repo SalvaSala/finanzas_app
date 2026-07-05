@@ -41,3 +41,6 @@ COMO-ARRANCAR.txt
 
 # ─── Capturas/artefactos de Playwright MCP ──────────
 .playwright-mcp/
+
+# archivo de proyecto de Visual Studio Code
+*.code-workspace
