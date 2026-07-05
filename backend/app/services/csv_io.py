@@ -339,6 +339,12 @@ def _parse_date(val: str, fmt: str) -> dt.date:
         except ValueError:
             if fmt == "iso":
                 raise ValueError(f"Fecha inválida: '{val}'. Se esperaba YYYY-MM-DD.") from None
+        # Normalize ISO with slashes (e.g. "2026/07/01") to dashes
+        if len(val) >= 10 and val[4] == "/" and val[7] == "/":
+            try:
+                return dt.date.fromisoformat(val.replace("/", "-"))
+            except ValueError:
+                pass
     if fmt in ("auto", "dmy"):
         try:
             return dt.datetime.strptime(val, "%d/%m/%Y").date()

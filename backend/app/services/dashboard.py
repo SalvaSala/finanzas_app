@@ -292,36 +292,34 @@ def get_category_averages(
 ) -> list[CategoryAvgRow]:
     """Monthly average vs current period amount for each category (or subcategory).
 
-    Average = sum(Jan → selected month of ``year``) / num_months.
-    For a full-year view of the current year, the window ends at the current month.
-    For a past year with no month selected, the window covers all 12 months.
+    Average = sum(Jan → today's month, or full year for past years) / num_months.
+    The average window is **independent** of the selected ``month`` — it always
+    represents the year-to-date (or full-year for past years) so the user sees
+    the real average regardless of which month they are inspecting.
     """
     today = dt.date.today()
     tx_type = (
         TransactionType.income if transaction_type_str == "income" else TransactionType.expense
     )
 
-    # Current period (the "este mes/año" column)
+    # Current period (the "este mes/año" column) — depends on the selected month
     current_start, current_end = period_range(year, month)
 
-    # Average window: always starts Jan 1 of the selected year
+    # Average window: always starts Jan 1 of the selected year.
+    # Does NOT depend on the selected month — always year-to-date (or full year).
     avg_start = dt.date(year, 1, 1)
-    if month is not None:
-        # Selected a specific month → average over Jan..month
-        avg_end = current_end
-        avg_months = month
-    elif year < today.year:
-        # Past year, full-year view → average over all 12 months
+    if year < today.year:
+        # Past year: average over all 12 complete months
         avg_end = dt.date(year, 12, 31)
         avg_months = 12
-    elif year == today.year:
-        # Current year, full-year view → average over Jan..current month
-        avg_months = today.month
-        _, avg_end = period_range(year, today.month)
-    else:
-        # Future year: no data
+    elif year > today.year:
+        # Future year: no data yet
         avg_months = 1
         avg_end = avg_start
+    else:
+        # Current year: average over completed months up to today
+        _, avg_end = period_range(year, today.month)
+        avg_months = today.month
 
     avg_divisor = Decimal(avg_months)
     categories = {c.id: c for c in category_repo.list_all(session)}
