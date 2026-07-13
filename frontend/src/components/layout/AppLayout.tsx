@@ -73,7 +73,7 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto flex flex-col gap-1 px-3">
+        <div className="flex flex-col gap-1">
           <NavLink
             to="/ajustes"
             className={({ isActive }) =>
@@ -91,7 +91,7 @@ export function AppLayout() {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-3 text-muted-foreground"
+            className="w-full justify-start gap-3 px-3 text-muted-foreground"
             onClick={toggle}
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
