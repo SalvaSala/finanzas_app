@@ -28,6 +28,15 @@ def download_backup() -> Response:
     )
 
 
+@router.delete("", status_code=200)
+def delete_database_endpoint() -> dict[str, str]:
+    try:
+        svc.delete_database()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return {"status": "ok", "message": "Base de datos borrada correctamente."}
+
+
 @router.post("/restore", status_code=200)
 async def restore_backup(
     file: UploadFile,

@@ -31,6 +31,16 @@ def create_backup() -> bytes:
         tmp.unlink(missing_ok=True)
 
 
+def delete_database() -> None:
+    """Delete the current database file and recreate it empty."""
+    engine.dispose()
+    db_path = _db_path()
+    db_path.unlink(missing_ok=True)
+    from app.core.db import run_migrations
+
+    run_migrations()
+
+
 def restore_backup(data: bytes) -> None:
     """Validate *data* as a SQLite database and restore it, replacing the current DB."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
