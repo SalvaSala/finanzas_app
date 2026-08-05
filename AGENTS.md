@@ -88,6 +88,7 @@ finapp/
 ├── README.md
 ├── backend/   app/{core,models,schemas,repositories,services,api} + alembic/ + tests/
 ├── frontend/  src/{api,hooks,components,pages,lib,theme}
+├── scripts/   utilidades (p.ej. create_example_db.py: BD ficticia de demo en data/example.db)
 ├── data/      finapp.db (SQLite local)
 └── packaging/ specs PyInstaller/pywebview
 ```
