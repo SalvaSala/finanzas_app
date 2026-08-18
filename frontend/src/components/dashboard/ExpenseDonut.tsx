@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
-import { PieChart, Pie, Tooltip, ResponsiveContainer, Sector } from "recharts";
-import type { PieSectorShapeProps } from "recharts";
 
 import { api } from "@/api/client";
 import type { CategoryAmount, CategoryAvgRow } from "@/api/client";
 import { Button } from "@/components/ui/button";
+import { EChart } from "@/components/charts/EChart";
+import type { EChartsCoreOption } from "@/lib/echarts";
+import { useEChartsTheme, tooltipStyle } from "@/hooks/useEChartsTheme";
 
 const FALLBACK = [
   "#6366f1","#f97316","#14b8a6","#f43f5e","#8b5cf6",
@@ -32,64 +33,6 @@ interface Props {
   averages?: CategoryAvgRow[];
 }
 
-function makeSectorShape(chartData: ChartEntry[], clickable: boolean) {
-  return function ColoredSector(props: PieSectorShapeProps) {
-    const color = chartData[props.index]?.color ?? "#888";
-    return (
-      <Sector
-        {...props}
-        fill={color}
-        style={clickable ? { cursor: "pointer" } : undefined}
-      />
-    );
-  };
-}
-
-function CustomTooltip({
-  active,
-  payload,
-  total,
-  avgMap,
-  type,
-}: {
-  active?: boolean;
-  payload?: { payload: ChartEntry }[];
-  total: number;
-  avgMap?: Map<number, CategoryAvgRow>;
-  type?: "expense" | "income";
-}) {
-  if (!active || !payload?.length) return null;
-  const entry = payload[0].payload;
-  const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : "0";
-  const avg = entry.categoryId != null ? avgMap?.get(entry.categoryId) : undefined;
-
-  const changePct = avg?.change_pct ?? null;
-  const isGood = changePct === null ? null : type === "expense" ? changePct < 0 : changePct > 0;
-  const changeColor = isGood === null ? "" : isGood ? "text-income" : "text-expense";
-
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2 text-sm shadow">
-      <p className="font-medium">
-        {entry.icon && <span className="mr-1">{entry.icon}</span>}
-        {entry.name}
-      </p>
-      <p className="text-muted-foreground">
-        {EUR.format(entry.value)} · {pct}%
-      </p>
-      {avg && (
-        <p className="mt-1 text-xs text-muted-foreground">
-          Promedio mensual: {EUR.format(avg.avg_monthly)}
-          {changePct !== null && (
-            <span className={`ml-1.5 font-medium ${changeColor}`}>
-              {changePct >= 0 ? "+" : ""}{changePct.toFixed(1)}%
-            </span>
-          )}
-        </p>
-      )}
-    </div>
-  );
-}
-
 function DonutView({
   items,
   title,
@@ -105,9 +48,69 @@ function DonutView({
   avgMap?: Map<number, CategoryAvgRow>;
   type?: "expense" | "income";
 }) {
+  const palette = useEChartsTheme();
   const total = items.reduce((s, d) => s + d.value, 0);
-  const clickable = Boolean(onDrill);
-  const sectorShape = makeSectorShape(items, clickable);
+
+  const option = useMemo<EChartsCoreOption>(
+    () => ({
+      tooltip: {
+        trigger: "item",
+        ...tooltipStyle(palette),
+        formatter: (params: unknown) => {
+          const p = params as { data: ChartEntry; percent: number };
+          const entry = p.data;
+          const avg = entry.categoryId != null ? avgMap?.get(entry.categoryId) : undefined;
+          const changePct = avg?.change_pct ?? null;
+          const isGood =
+            changePct === null ? null : type === "expense" ? changePct < 0 : changePct > 0;
+          const changeColor =
+            isGood === null ? "" : isGood ? palette.income : palette.expense;
+
+          let html =
+            `<p style="margin:0;font-weight:500">${entry.icon ? entry.icon + " " : ""}${entry.name}</p>` +
+            `<p style="margin:0;color:${palette.tick}">${EUR.format(entry.value)} · ${p.percent.toFixed(1)}%</p>`;
+          if (avg) {
+            html += `<p style="margin:4px 0 0;font-size:11px;color:${palette.tick}">Promedio mensual: ${EUR.format(avg.avg_monthly)}`;
+            if (changePct !== null) {
+              html += `<span style="margin-left:6px;font-weight:500;color:${changeColor}">${changePct >= 0 ? "+" : ""}${changePct.toFixed(1)}%</span>`;
+            }
+            html += `</p>`;
+          }
+          return html;
+        },
+      },
+      series: [
+        {
+          type: "pie",
+          radius: ["50%", "85%"],
+          center: ["50%", "50%"],
+          padAngle: 2,
+          cursor: onDrill ? "pointer" : "default",
+          label: { show: false },
+          emphasis: { scale: true, scaleSize: 4 },
+          data: items.map((d) => ({
+            ...d,
+            itemStyle: { color: d.color },
+          })),
+        },
+      ],
+    }),
+    [items, palette, avgMap, type, onDrill],
+  );
+
+  const events = useMemo(
+    () =>
+      onDrill
+        ? {
+            click: (params: unknown) => {
+              const i = (params as { dataIndex: number }).dataIndex;
+              const entry = items[i];
+              if (entry) onDrill(entry);
+            },
+          }
+        : undefined,
+    [items, onDrill],
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -120,30 +123,9 @@ function DonutView({
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
       </div>
 
-      <ResponsiveContainer width="100%" height={240}>
-        <PieChart>
-          <Pie
-            data={items}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            innerRadius="50%"
-            outerRadius="85%"
-            paddingAngle={2}
-            shape={sectorShape}
-            onClick={
-              onDrill
-                ? (_data, index) => {
-                    const entry = items[index];
-                    if (entry) onDrill(entry);
-                  }
-                : undefined
-            }
-          />
-          <Tooltip content={<CustomTooltip total={total} avgMap={avgMap} type={type} />} />
-        </PieChart>
-      </ResponsiveContainer>
+      <div style={{ height: 240 }}>
+        <EChart option={option} onEvents={events} />
+      </div>
 
       <ul className="mt-3 space-y-1.5 overflow-y-auto text-sm">
         {items.map((entry) => {

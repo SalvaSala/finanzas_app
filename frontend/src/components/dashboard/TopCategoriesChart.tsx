@@ -1,14 +1,8 @@
-import { useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
+import { useMemo, useState } from "react";
 import type { CategoryAmount } from "@/api/client";
+import { EChart } from "@/components/charts/EChart";
+import type { EChartsCoreOption } from "@/lib/echarts";
+import { useEChartsTheme, tooltipStyle } from "@/hooks/useEChartsTheme";
 
 const FALLBACK = [
   "#6366f1","#f97316","#14b8a6","#f43f5e","#8b5cf6",
@@ -30,65 +24,74 @@ interface Props {
   incomeData: CategoryAmount[];
 }
 
-function CustomTooltip({
-  active,
-  payload,
-}: {
-  active?: boolean;
-  payload?: { payload: ChartItem }[];
-}) {
-  if (!active || !payload?.length) return null;
-  const item = payload[0].payload;
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2 text-sm shadow">
-      <div className="flex items-center gap-2">
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: item.color }}
-        />
-        <span className="font-medium">{item.name}</span>
-      </div>
-      <p className="mt-0.5 text-muted-foreground">{EUR.format(item.value)}</p>
-    </div>
-  );
-}
-
-function BarLabel(props: {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  value?: number;
-}) {
-  const { x = 0, y = 0, width = 0, height = 0, value = 0 } = props;
-  return (
-    <text
-      x={x + width + 6}
-      y={y + height / 2}
-      fill="currentColor"
-      fontSize={11}
-      dominantBaseline="middle"
-    >
-      {EUR.format(value)}
-    </text>
-  );
-}
-
 export function TopCategoriesChart({ expenseData, incomeData }: Props) {
   const [type, setType] = useState<TxType>("expense");
+  const palette = useEChartsTheme();
 
   const rawData = type === "expense" ? expenseData : incomeData;
 
-  const chartData: ChartItem[] = [...rawData]
-    .sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
-    .slice(0, 10)
-    .map((item, i) => ({
-      name: item.icon ? `${item.icon} ${item.name}` : item.name,
-      value: parseFloat(item.total),
-      color: item.color ?? FALLBACK[i % FALLBACK.length],
-    }));
+  const chartData: ChartItem[] = useMemo(
+    () =>
+      [...rawData]
+        .sort((a, b) => parseFloat(b.total) - parseFloat(a.total))
+        .slice(0, 10)
+        .map((item, i) => ({
+          name: item.icon ? `${item.icon} ${item.name}` : item.name,
+          value: parseFloat(item.total),
+          color: item.color ?? FALLBACK[i % FALLBACK.length],
+        })),
+    [rawData],
+  );
 
   const chartHeight = Math.max(chartData.length * 36 + 10, 80);
+
+  const option = useMemo<EChartsCoreOption>(
+    () => ({
+      grid: { top: 0, right: 90, bottom: 0, left: 0, containLabel: true },
+      xAxis: { type: "value", show: false },
+      yAxis: {
+        type: "category",
+        // Orden inverso: la categoría de mayor importe arriba
+        data: chartData.map((d) => d.name).reverse(),
+        axisTick: { show: false },
+        axisLine: { show: false },
+        axisLabel: { fontSize: 12, color: palette.text },
+      },
+      tooltip: {
+        trigger: "item",
+        ...tooltipStyle(palette),
+        formatter: (params: unknown) => {
+          const p = params as { dataIndex: number };
+          const item = [...chartData].reverse()[p.dataIndex];
+          if (!item) return "";
+          return (
+            `<div style="display:flex;align-items:center;gap:8px">` +
+            `<span style="width:8px;height:8px;border-radius:50%;background:${item.color};flex-shrink:0"></span>` +
+            `<span style="font-weight:500">${item.name}</span></div>` +
+            `<p style="margin:2px 0 0;color:${palette.tick}">${EUR.format(item.value)}</p>`
+          );
+        },
+      },
+      series: [
+        {
+          type: "bar",
+          data: [...chartData]
+            .reverse()
+            .map((d) => ({ value: d.value, itemStyle: { color: d.color, borderRadius: [0, 4, 4, 0] } })),
+          barCategoryGap: "30%",
+          label: {
+            show: true,
+            position: "right",
+            distance: 6,
+            fontSize: 11,
+            color: palette.text,
+            formatter: ({ value }: { value: number }) => EUR.format(value),
+          },
+        },
+      ],
+    }),
+    [chartData, palette],
+  );
 
   return (
     <div className="space-y-4">
@@ -119,29 +122,9 @@ export function TopCategoriesChart({ expenseData, incomeData }: Props) {
           Sin datos para este periodo
         </p>
       ) : (
-        <ResponsiveContainer width="100%" height={chartHeight}>
-          <BarChart
-            data={chartData}
-            layout="vertical"
-            margin={{ top: 0, right: 90, bottom: 0, left: 0 }}
-          >
-            <XAxis type="number" hide />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={140}
-              tick={{ fontSize: 12 }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "transparent" }} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} label={<BarLabel />}>
-              {chartData.map((entry, index) => (
-                <Cell key={index} fill={entry.color} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div style={{ height: chartHeight }}>
+          <EChart option={option} />
+        </div>
       )}
     </div>
   );

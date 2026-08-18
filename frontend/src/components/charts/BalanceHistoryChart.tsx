@@ -1,18 +1,10 @@
 import { useState, useMemo } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts";
 
 import { cn } from "@/lib/utils";
 import { useBalanceHistory } from "@/hooks/useCharts";
-import { useTheme } from "@/hooks/useTheme";
+import { EChart } from "@/components/charts/EChart";
+import type { EChartsCoreOption } from "@/lib/echarts";
+import { useEChartsTheme, tooltipStyle } from "@/hooks/useEChartsTheme";
 
 type Period = "1M" | "3M" | "1A" | "5A";
 
@@ -23,10 +15,11 @@ const PERIODS: { label: string; value: Period }[] = [
   { label: "5A", value: "5A" },
 ];
 
-function tickInterval(period: Period, dataLen: number): number | "preserveStartEnd" {
-  if (period === "1M") return Math.floor(dataLen / 6);
-  if (period === "3M") return Math.floor(dataLen / 8);
-  return "preserveStartEnd";
+/** Muestra 1 etiqueta de cada N en periodos cortos; en largos, modo automático. */
+function labelStep(period: Period, dataLen: number): number | null {
+  if (period === "1M") return Math.max(1, Math.floor(dataLen / 6));
+  if (period === "3M") return Math.max(1, Math.floor(dataLen / 8));
+  return null;
 }
 
 function formatXTick(dateStr: string, period: Period): string {
@@ -55,30 +48,85 @@ const fmtEur = (v: number) =>
 export function BalanceHistoryChart() {
   const [period, setPeriod] = useState<Period>("1A");
   const { data = [], isLoading } = useBalanceHistory(period);
-  const { theme } = useTheme();
+  const palette = useEChartsTheme();
 
-  const isDark = theme === "dark";
-  const gridColor = isDark ? "#374151" : "#e5e7eb";
-  const tickColor = isDark ? "#9ca3af" : "#6b7280";
-  const cardBg = isDark ? "#1f2937" : "#ffffff";
-  const borderColor = isDark ? "#374151" : "#e5e7eb";
+  const option = useMemo<EChartsCoreOption>(() => {
+    const dates = data.map((d) => d.date);
+    const balances = data.map((d) => d.balance);
+    const min = balances.length ? Math.min(...balances) : 0;
+    const max = balances.length ? Math.max(...balances) : 0;
+    const hasMixed = min < 0 && max > 0;
+    const allNeg = max <= 0;
 
-  // Compute where y=0 falls in the gradient (top=0, bottom=1)
-  const { hasMixed, allNeg, zeroOffset } = useMemo(() => {
-    if (!data.length) return { hasMixed: false, allNeg: false, zeroOffset: "0%" };
-    const min = Math.min(...data.map((d) => d.balance));
-    const max = Math.max(...data.map((d) => d.balance));
-    const mixed = min < 0 && max > 0;
-    const neg = max <= 0;
-    // gradient y=0 → top of chart (max value), y=1 → bottom (min value)
-    const frac = mixed ? max / (max - min) : 0;
-    return { hasMixed: mixed, allNeg: neg, zeroOffset: `${(frac * 100).toFixed(2)}%` };
-  }, [data]);
+    // Sin cruce de cero: color único. Con cruce: visualMap colorea por tramos.
+    const singleColor = allNeg ? palette.expense : palette.income;
+    const step = labelStep(period, data.length);
 
-  // Single stroke color or gradient URL when crossing zero
-  const strokeColor = allNeg ? "#ef4444" : hasMixed ? "url(#strokeGrad)" : "#22c55e";
-  const lastBal = data[data.length - 1]?.balance ?? 0;
-  const dotColor = lastBal < 0 ? "#ef4444" : "#22c55e";
+    return {
+      grid: { top: 8, right: 8, bottom: 0, left: 0, containLabel: true },
+      xAxis: {
+        type: "category",
+        data: dates,
+        axisTick: { show: false },
+        axisLine: { show: false },
+        axisLabel: {
+          fontSize: 11,
+          color: palette.tick,
+          hideOverlap: true,
+          formatter: (v: string) => formatXTick(v, period),
+          interval: step === null ? ("auto" as const) : (index: number) => index % step === 0,
+        },
+      },
+      yAxis: {
+        type: "value",
+        axisLabel: { fontSize: 11, color: palette.tick, formatter: fmtEur },
+        splitLine: { lineStyle: { color: palette.grid, type: "dashed" } },
+      },
+      visualMap: hasMixed
+        ? {
+            show: false,
+            seriesIndex: 0,
+            dimension: 1,
+            pieces: [
+              { gt: 0, color: palette.income },
+              { lte: 0, color: palette.expense },
+            ],
+          }
+        : undefined,
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { lineStyle: { color: palette.grid, type: "dashed" } },
+        ...tooltipStyle(palette),
+        formatter: (params: unknown) => {
+          const items = params as { axisValue: string; value: number }[];
+          if (!items.length) return "";
+          const balance = items[0].value;
+          const color = balance < 0 ? palette.expense : palette.income;
+          return (
+            `<p style="margin:0 0 4px;color:${palette.tick}">${formatTooltipLabel(items[0].axisValue, period)}</p>` +
+            `<p style="margin:0;font-weight:600;color:${color}">${fmtEur(balance)}</p>`
+          );
+        },
+      },
+      series: [
+        {
+          type: "line",
+          data: balances,
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 2, color: singleColor },
+          areaStyle: { color: singleColor, opacity: 0.15 },
+          markLine: {
+            silent: true,
+            symbol: "none",
+            label: { show: false },
+            lineStyle: { color: palette.grid, width: 1 },
+            data: [{ yAxis: 0 }],
+          },
+        },
+      ],
+    };
+  }, [data, period, palette]);
 
   return (
     <div className="space-y-4">
@@ -109,97 +157,9 @@ export function BalanceHistoryChart() {
           Sin datos para el periodo seleccionado.
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <defs>
-              {/* Fill gradient */}
-              {hasMixed ? (
-                <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#22c55e" stopOpacity={0.2} />
-                  <stop offset={zeroOffset} stopColor="#22c55e" stopOpacity={0} />
-                  <stop offset={zeroOffset} stopColor="#ef4444" stopOpacity={0} />
-                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0.2} />
-                </linearGradient>
-              ) : allNeg ? (
-                <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
-                </linearGradient>
-              ) : (
-                <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                </linearGradient>
-              )}
-
-              {/* Stroke gradient — only when crossing zero */}
-              {hasMixed && (
-                <linearGradient id="strokeGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset={zeroOffset} stopColor="#22c55e" />
-                  <stop offset={zeroOffset} stopColor="#ef4444" />
-                </linearGradient>
-              )}
-            </defs>
-
-            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-
-            <XAxis
-              dataKey="date"
-              tickFormatter={(v) => formatXTick(v as string, period)}
-              tick={{ fontSize: 11, fill: tickColor }}
-              tickLine={false}
-              axisLine={false}
-              interval={tickInterval(period, data.length)}
-            />
-
-            <YAxis
-              tickFormatter={fmtEur}
-              tick={{ fontSize: 11, fill: tickColor }}
-              tickLine={false}
-              axisLine={false}
-              width={90}
-            />
-
-            <ReferenceLine y={0} stroke={gridColor} strokeWidth={1} />
-
-            <Tooltip
-              content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null;
-                const balance = (payload[0]?.payload as { balance: number })?.balance ?? 0;
-                return (
-                  <div
-                    style={{
-                      background: cardBg,
-                      border: `1px solid ${borderColor}`,
-                      borderRadius: "8px",
-                      padding: "8px 12px",
-                      fontSize: 12,
-                      color: isDark ? "#f9fafb" : "#111827",
-                    }}
-                  >
-                    <div style={{ marginBottom: 4, color: tickColor }}>
-                      {formatTooltipLabel(label as string, period)}
-                    </div>
-                    <div style={{ fontWeight: 600, color: balance < 0 ? "#ef4444" : "#22c55e" }}>
-                      {fmtEur(balance)}
-                    </div>
-                  </div>
-                );
-              }}
-              cursor={{ stroke: gridColor, strokeWidth: 1, strokeDasharray: "4 4" }}
-            />
-
-            <Area
-              type="monotone"
-              dataKey="balance"
-              stroke={strokeColor}
-              strokeWidth={2}
-              fill="url(#fillGrad)"
-              dot={false}
-              activeDot={{ r: 4, fill: dotColor, strokeWidth: 0 }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        <div style={{ height: 300 }}>
+          <EChart option={option} />
+        </div>
       )}
     </div>
   );

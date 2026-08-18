@@ -15,7 +15,7 @@ App de **finanzas personales** para registrar ingresos/gastos y analizarlos en u
 
 **Backend (Python):** FastAPI · SQLModel (SQLAlchemy + Pydantic) · SQLite (→ PostgreSQL en nube) · Alembic · Uvicorn · pytest · ruff + black + mypy · uv.
 
-**Frontend (TypeScript):** Vite · React · TailwindCSS v4 (config CSS-first, sin `tailwind.config.js`; plugin `@tailwindcss/vite`) · shadcn/ui · Recharts (gráficos estándar) + Nivo/visx (treemap, heatmap, Sankey) · TanStack Query · TanStack Table · React Hook Form + Zod.
+**Frontend (TypeScript):** Vite · React · TailwindCSS v4 (config CSS-first, sin `tailwind.config.js`; plugin `@tailwindcss/vite`) · shadcn/ui · Apache ECharts (gráficos) · TanStack Query · TanStack Table · React Hook Form + Zod.
 
 **Comunicación:** API REST bajo `/api`. Tipos del frontend generados desde el esquema **OpenAPI** de FastAPI (`openapi-typescript`).
 
@@ -27,7 +27,7 @@ El proyecto tiene instalados tres servidores MCP a nivel de usuario:
 
 - **Context7** — documentación actualizada de librerías. Añade **`use context7`** al
   trabajar con cualquier librería del stack (FastAPI, SQLModel, Alembic, React,
-  Tailwind, shadcn/ui, Recharts, TanStack Query, TanStack Table, React Hook Form, Zod)
+  Tailwind, shadcn/ui, ECharts, TanStack Query, TanStack Table, React Hook Form, Zod)
   para consultar la documentación al día en lugar de basarte en los datos de
   entrenamiento. Especialmente importante en **Tailwind v4 y shadcn/ui**, donde la
   sintaxis cambia respecto a versiones anteriores.

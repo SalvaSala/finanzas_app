@@ -1,14 +1,9 @@
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts";
+import { useMemo } from "react";
 import type { MonthlyStats } from "@/api/client";
+import { echarts } from "@/lib/echarts";
+import type { EChartsCoreOption } from "@/lib/echarts";
+import { EChart } from "@/components/charts/EChart";
+import { useEChartsTheme, tooltipStyle } from "@/hooks/useEChartsTheme";
 
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -18,34 +13,90 @@ interface Props {
   data: MonthlyStats[];
 }
 
-function CustomTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: { value: number }[];
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const value = payload[0].value;
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2 text-sm shadow">
-      <p className="font-medium">{label}</p>
-      <p className={value >= 0 ? "text-income" : "text-expense"}>
-        Balance: {EUR.format(value)}
-      </p>
-    </div>
-  );
-}
-
 export function BalanceEvolutionChart({ data }: Props) {
-  const chartData = data.map((d) => ({
-    month: MONTHS[d.month - 1],
-    balance: parseFloat(String(d.cumulative_balance)),
-  }));
+  const palette = useEChartsTheme();
 
-  const hasData = data.some((d) => parseFloat(String(d.cumulative_balance)) !== 0);
+  const chartData = useMemo(
+    () => ({
+      months: data.map((d) => MONTHS[d.month - 1]),
+      values: data.map((d) => parseFloat(String(d.cumulative_balance))),
+    }),
+    [data],
+  );
+
+  const hasData = chartData.values.some((v) => v !== 0);
+
+  const option = useMemo<EChartsCoreOption>(() => {
+    const { months, values } = chartData;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const hasNegative = min < 0;
+    const hasPositive = max > 0;
+
+    // Verde si siempre positivo, rojo si siempre negativo, color primario si cruza cero
+    const lineColor = !hasNegative
+      ? palette.income
+      : !hasPositive
+        ? palette.expense
+        : palette.primary;
+
+    return {
+      grid: { top: 8, right: 8, bottom: 8, left: 8, containLabel: true },
+      xAxis: {
+        type: "category",
+        data: months,
+        axisTick: { show: false },
+        axisLine: { show: false },
+        axisLabel: { fontSize: 11, color: palette.tick },
+      },
+      yAxis: {
+        type: "value",
+        axisLabel: { fontSize: 11, color: palette.tick, formatter: (v: number) => EUR.format(v) },
+        splitLine: { lineStyle: { color: palette.grid, type: "dashed" } },
+      },
+      tooltip: {
+        trigger: "axis",
+        ...tooltipStyle(palette),
+        formatter: (params: unknown) => {
+          const items = params as { axisValue: string; value: number }[];
+          if (!items.length) return "";
+          const value = items[0].value;
+          const color = value >= 0 ? palette.income : palette.expense;
+          return `<p style="font-weight:500;margin:0 0 4px">${items[0].axisValue}</p>` +
+            `<p style="margin:0;color:${color}">Balance: ${EUR.format(value)}</p>`;
+        },
+      },
+      series: [
+        {
+          name: "Balance",
+          type: "line",
+          data: values,
+          smooth: true,
+          symbol: "circle",
+          symbolSize: 6,
+          showSymbol: true,
+          lineStyle: { width: 2, color: lineColor },
+          itemStyle: { color: lineColor },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0.05, color: `${lineColor}4D` },
+              { offset: 0.95, color: `${lineColor}05` },
+            ]),
+          },
+          markLine:
+            hasNegative && hasPositive
+              ? {
+                  silent: true,
+                  symbol: "none",
+                  label: { show: false },
+                  lineStyle: { color: palette.tick, type: "dashed" },
+                  data: [{ yAxis: 0 }],
+                }
+              : undefined,
+        },
+      ],
+    };
+  }, [chartData, palette]);
 
   if (!hasData) {
     return (
@@ -58,57 +109,12 @@ export function BalanceEvolutionChart({ data }: Props) {
     );
   }
 
-  const values = chartData.map((d) => d.balance);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const hasNegative = min < 0;
-  const hasPositive = max > 0;
-
-  // Use green when always positive, red when always negative, both otherwise
-  const areaColor = !hasNegative
-    ? "var(--color-income, #22c55e)"
-    : !hasPositive
-      ? "var(--color-expense, #ef4444)"
-      : "hsl(var(--primary))";
-
   return (
     <div className="flex h-full flex-col">
       <p className="mb-2 text-sm font-medium text-muted-foreground">Evolución del balance</p>
-      <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={chartData}>
-          <defs>
-            <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={areaColor} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={areaColor} stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-          <XAxis
-            dataKey="month"
-            tick={{ fontSize: 11 }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 11 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v) => EUR.format(v)}
-            width={70}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          {hasNegative && hasPositive && <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />}
-          <Area
-            type="monotone"
-            dataKey="balance"
-            stroke={areaColor}
-            strokeWidth={2}
-            fill="url(#balanceGradient)"
-            dot={{ r: 3, fill: areaColor, strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: areaColor, strokeWidth: 0 }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+      <div style={{ height: 220 }}>
+        <EChart option={option} />
+      </div>
     </div>
   );
 }

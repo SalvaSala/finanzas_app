@@ -1,54 +1,80 @@
-import { ResponsiveCalendar } from "@nivo/calendar";
+import { useMemo } from "react";
 import type { DayAmount } from "@/api/client";
-import { useNivoTheme } from "@/hooks/useNivoTheme";
-import { useTheme } from "@/hooks/useTheme";
+import { EChart } from "@/components/charts/EChart";
+import type { EChartsCoreOption } from "@/lib/echarts";
+import { useEChartsTheme, tooltipStyle } from "@/hooks/useEChartsTheme";
 
 interface Props {
   data: DayAmount[];
   year: number;
 }
 
+const fmt = (v: number) =>
+  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
+
 export function CalendarHeatmap({ data, year }: Props) {
-  const nivoTheme = useNivoTheme();
-  const { theme } = useTheme();
+  const palette = useEChartsTheme();
 
-  const emptyColor = theme === "dark" ? "#1f2937" : "#f3f4f6";
-  const monthBorderColor = theme === "dark" ? "#374151" : "#e5e7eb";
+  const emptyColor = palette.isDark ? "#1f2937" : "#f3f4f6";
+  const monthBorderColor = palette.isDark ? "#374151" : "#e5e7eb";
 
-  const fmt = (v: number) =>
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
+  const option = useMemo<EChartsCoreOption>(() => {
+    const max = data.length ? Math.max(...data.map((d) => d.value)) : 0;
 
-  return (
-    <ResponsiveCalendar
-      data={data}
-      from={`${year}-01-01`}
-      to={`${year}-12-31`}
-      emptyColor={emptyColor}
-      colors={["#fef3c7", "#fcd34d", "#f97316", "#dc2626"]}
-      margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-      yearSpacing={40}
-      monthBorderColor={monthBorderColor}
-      dayBorderWidth={2}
-      dayBorderColor={emptyColor}
-      theme={nivoTheme}
-      legends={[
-        {
-          anchor: "bottom-right",
-          direction: "row",
-          translateY: 20,
-          itemCount: 4,
-          itemWidth: 42,
-          itemHeight: 36,
-          itemsSpacing: 14,
-          itemDirection: "right-to-left",
+    return {
+      tooltip: {
+        ...tooltipStyle(palette),
+        formatter: (params: unknown) => {
+          const p = params as { data: [string, number] };
+          return (
+            `<p style="margin:0;font-weight:600">${p.data[0]}</p>` +
+            `<p style="margin:0;color:${palette.tick}">${fmt(p.data[1])}</p>`
+          );
         },
-      ]}
-      tooltip={({ day, value }) => (
-        <div className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
-          <div className="font-semibold">{day}</div>
-          <div className="text-muted-foreground">{fmt(Number(value))}</div>
-        </div>
-      )}
-    />
-  );
+      },
+      visualMap: {
+        type: "continuous",
+        min: 0,
+        max: max > 0 ? max : 1,
+        calculable: false,
+        orient: "horizontal",
+        right: 10,
+        bottom: 0,
+        itemWidth: 12,
+        itemHeight: 90,
+        textStyle: { color: palette.tick, fontSize: 11 },
+        inRange: { color: ["#fef3c7", "#fcd34d", "#f97316", "#dc2626"] },
+      },
+      calendar: {
+        range: year,
+        top: 30,
+        left: 40,
+        right: 20,
+        bottom: 50,
+        cellSize: ["auto", 14],
+        yearLabel: { show: false },
+        dayLabel: {
+          color: palette.tick,
+          fontSize: 10,
+          nameMap: ["D", "L", "M", "X", "J", "V", "S"],
+        },
+        monthLabel: {
+          color: palette.tick,
+          fontSize: 11,
+          nameMap: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+        },
+        splitLine: { lineStyle: { color: monthBorderColor, width: 1 } },
+        itemStyle: { color: emptyColor, borderColor: emptyColor, borderWidth: 2 },
+      },
+      series: [
+        {
+          type: "heatmap",
+          coordinateSystem: "calendar",
+          data: data.map((d) => [d.day, d.value]),
+        },
+      ],
+    };
+  }, [data, year, palette, emptyColor, monthBorderColor]);
+
+  return <EChart option={option} />;
 }

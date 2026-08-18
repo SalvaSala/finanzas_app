@@ -1,10 +1,17 @@
-import { ResponsiveTreeMap } from "@nivo/treemap";
+import { useMemo } from "react";
 import type { TreemapData } from "@/api/client";
-import { useNivoTheme } from "@/hooks/useNivoTheme";
+import { EChart } from "@/components/charts/EChart";
+import type { EChartsCoreOption } from "@/lib/echarts";
+import { useEChartsTheme, tooltipStyle } from "@/hooks/useEChartsTheme";
 
 interface Props {
   data: TreemapData;
 }
+
+const PALETTE = [
+  "#6366f1","#f97316","#14b8a6","#f43f5e","#8b5cf6",
+  "#eab308","#06b6d4","#84cc16","#ec4899","#64748b",
+];
 
 const fmtEur = (v: number) =>
   new Intl.NumberFormat("es-ES", {
@@ -14,7 +21,62 @@ const fmtEur = (v: number) =>
   }).format(v);
 
 export function TreemapChart({ data }: Props) {
-  const nivoTheme = useNivoTheme();
+  const palette = useEChartsTheme();
+
+  const option = useMemo<EChartsCoreOption>(
+    () => ({
+      tooltip: {
+        trigger: "item",
+        ...tooltipStyle(palette),
+        formatter: (params: unknown) => {
+          const p = params as { name: string; value: number };
+          return (
+            `<p style="margin:0;font-weight:600">${p.name}</p>` +
+            `<p style="margin:0;color:${palette.tick}">${fmtEur(p.value)}</p>`
+          );
+        },
+      },
+      series: [
+        {
+          type: "treemap",
+          roam: false,
+          nodeClick: false,
+          breadcrumb: { show: false },
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: "100%",
+          height: "100%",
+          color: PALETTE,
+          label: {
+            show: true,
+            formatter: "{b}",
+            fontSize: 12,
+            color: "#fff",
+            textBorderColor: "rgba(0,0,0,0.25)",
+            textBorderWidth: 2,
+          },
+          upperLabel: {
+            show: true,
+            height: 26,
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#fff",
+            textBorderColor: "rgba(0,0,0,0.25)",
+            textBorderWidth: 2,
+          },
+          itemStyle: {
+            borderWidth: 2,
+            gapWidth: 2,
+            borderColor: palette.isDark ? "#111827" : "#ffffff",
+          },
+          data: data.children,
+        },
+      ],
+    }),
+    [data, palette],
+  );
 
   if (!data.children.length) {
     return (
@@ -24,26 +86,5 @@ export function TreemapChart({ data }: Props) {
     );
   }
 
-  return (
-    <ResponsiveTreeMap
-      data={data as Parameters<typeof ResponsiveTreeMap>[0]["data"]}
-      identity="name"
-      value="value"
-      valueFormat={fmtEur}
-      theme={nivoTheme}
-      colors={{ scheme: "paired" }}
-      borderWidth={2}
-      borderColor={{ from: "color", modifiers: [["darker", 0.5]] }}
-      labelSkipSize={24}
-      label="name"
-      parentLabelPadding={8}
-      parentLabelTextColor={{ from: "color", modifiers: [["darker", 2]] }}
-      tooltip={({ node }) => (
-        <div className="rounded-md border bg-card px-3 py-2 text-sm shadow-md">
-          <div className="font-semibold">{node.id}</div>
-          <div className="text-muted-foreground">{fmtEur(node.value)}</div>
-        </div>
-      )}
-    />
-  );
+  return <EChart option={option} />;
 }

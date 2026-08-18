@@ -42,7 +42,7 @@ Arquitectura **frontend / backend separados**, comunicándose por una **API REST
 | Librería UI | **React** | Ecosistema enorme; Claude Code lo genera muy bien. |
 | Estilos | **TailwindCSS v4** (config CSS-first, plugin `@tailwindcss/vite`) | Estilado rápido y consistente. |
 | Componentes | **shadcn/ui** (Radix + Tailwind) | Componentes accesibles y con muy buen aspecto. |
-| Gráficos | **Recharts** (estándar) + **Nivo**/**visx** (avanzados: treemap, heatmap, Sankey) | Cubre todos los gráficos del dashboard. |
+| Gráficos | **Apache ECharts** (bar, line/area, pie, treemap, calendar heatmap, sankey) | Una sola librería con tree-shaking; wrapper en `components/charts/EChart.tsx`. |
 | Estado servidor | **TanStack Query (React Query)** | Caché, recarga y sincronización de datos de la API. |
 | Cliente HTTP | **fetch**/**axios** + tipos generados desde OpenAPI | Llamadas a la API tipadas. |
 | Tablas | **TanStack Table** | Tabla de movimientos con orden, filtro y edición. |

@@ -6,7 +6,7 @@ Empieza como app de escritorio **local** (Windows y Linux) y está preparada par
 ## Stack
 
 - **Backend:** Python · FastAPI · SQLModel · SQLite (→ PostgreSQL) · Alembic
-- **Frontend:** React · Vite · TypeScript · TailwindCSS · shadcn/ui · Recharts
+- **Frontend:** React · Vite · TypeScript · TailwindCSS · shadcn/ui · Apache ECharts
 - **Empaquetado:** FastAPI sirve el frontend compilado + pywebview + PyInstaller
 
 ## Requisitos previos
