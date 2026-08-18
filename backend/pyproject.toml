@@ -50,7 +50,9 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 plugins = ["pydantic.mypy"]
 # Las migraciones autogeneradas de Alembic no se comprueban con tipos.
-exclude = ['alembic/versions/']
+# dist/ y build/ son artefactos de PyInstaller: contienen copias del código
+# que confunden la resolución de módulos de mypy.
+exclude = ['alembic/versions/', '^dist/', '^build/']
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
