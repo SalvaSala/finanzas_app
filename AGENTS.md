@@ -23,7 +23,16 @@ App de **finanzas personales** para registrar ingresos/gastos y analizarlos en u
 
 ## Herramientas MCP
 
-El proyecto tiene instalados tres servidores MCP a nivel de usuario:
+**Claude Code es el único agente soportado en este proyecto.** Los servidores MCP se
+configuran **a nivel de usuario** en `~/.claude.json` (permisos `600`, fuera del repo)
+mediante `claude mcp add`; no hay configuración de MCP versionada, y las claves de API
+viven en ese fichero, nunca en el repositorio.
+
+| Servidor | Transporte | Destino |
+|---|---|---|
+| `context7` | HTTP remoto | `https://mcp.context7.com/mcp` (cabecera `CONTEXT7_API_KEY`) |
+| `github` | HTTP remoto | `https://api.githubcopilot.com/mcp/` (cabecera `Authorization: Bearer`) |
+| `playwright` | stdio local | `npx @playwright/mcp@0.0.79 --browser chromium` |
 
 - **Context7** — documentación actualizada de librerías. Añade **`use context7`** al
   trabajar con cualquier librería del stack (FastAPI, SQLModel, Alembic, React,
@@ -31,22 +40,26 @@ El proyecto tiene instalados tres servidores MCP a nivel de usuario:
   para consultar la documentación al día en lugar de basarte en los datos de
   entrenamiento. Especialmente importante en **Tailwind v4 y shadcn/ui**, donde la
   sintaxis cambia respecto a versiones anteriores.
-- **GitHub** — gestión del repositorio (issues, PRs, búsqueda de código). Úsalo cuando
-  necesites interactuar con el repo desde el agente.
+- **GitHub** — servidor **oficial de GitHub** (issues, PRs, búsqueda de código,
+  Actions, alertas de seguridad). Sustituye a `@modelcontextprotocol/server-github`,
+  que quedó descatalogado en npm. Usa el token del CLI `gh`; si dejara de funcionar,
+  regenerar la cabecera con `claude mcp add --transport http github ...`.
 - **Playwright** — pruebas visuales del frontend. Úsalo para verificar que las
   pantallas se ven y se comportan correctamente abriendo un navegador real.
 
+Para revisar el estado: `claude mcp list`.
+
 ## Skills
 
-El proyecto usa el ecosistema de skills de **skills.sh** (compatible con múltiples
-agentes). Antes de ejecutar cualquier tarea (crear componentes, escribir tests,
-revisar código, crear endpoints, refactorizar, etc.), comprueba si existe alguna
-skill instalada o disponible en el ecosistema (`npx skills find`) que pueda ayudar a
-hacer la tarea mejor. Si es relevante, úsala; si no aporta valor, continúa sin ella.
-**No instalar skills sin consultar antes.**
+El proyecto usa el ecosistema de skills de **skills.sh**, instaladas en `.agents/skills/`
+(`find-skills`, `frontend-design`, `shadcn`). Antes de ejecutar cualquier tarea (crear
+componentes, escribir tests, revisar código, crear endpoints, refactorizar, etc.),
+comprueba si existe alguna skill instalada o disponible en el ecosistema
+(`npx skills find`) que pueda ayudar a hacer la tarea mejor. Si es relevante, úsala;
+si no aporta valor, continúa sin ella. **No instalar skills sin consultar antes.**
 
-Las slash commands del proyecto (`.claude/commands/`) son específicas de Claude Code:
-`/review`, `/commit`, `/new-endpoint`.
+El proyecto no define slash commands propias: no existe `.claude/commands/`. Se usan
+las que trae Claude Code de serie (`/code-review`, `/security-review`...).
 
 ## Comandos
 
