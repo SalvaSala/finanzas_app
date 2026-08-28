@@ -675,7 +675,8 @@ export interface paths {
         get: operations["download_backup_api_backup_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Database Endpoint */
+        delete: operations["delete_database_endpoint_api_backup_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1623,6 +1624,7 @@ export interface operations {
                 limit?: number | null;
                 type?: components["schemas"]["TransactionType"] | null;
                 category_id?: number | null;
+                subcategory_id?: number | null;
                 no_category?: boolean;
                 no_subcategory?: boolean;
                 account_id?: number | null;
@@ -3244,6 +3246,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    delete_database_endpoint_api_backup_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };

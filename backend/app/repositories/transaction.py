@@ -58,9 +58,7 @@ def list_(
     if subcategory_id is not None:
         statement = statement.where(col(Transaction.subcategory_id) == subcategory_id)
     elif no_subcategory:
-        has_subcategories = exists().where(
-            col(Category.parent_id) == col(Transaction.category_id)
-        )
+        has_subcategories = exists().where(col(Category.parent_id) == col(Transaction.category_id))
         statement = statement.where(
             col(Transaction.category_id).is_not(None),
             col(Transaction.subcategory_id).is_(None),

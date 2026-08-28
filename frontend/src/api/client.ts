@@ -42,7 +42,10 @@ export type CategoryAvgRow = components["schemas"]["CategoryAvgRow"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
-> & { no_subcategory?: boolean; subcategory_id?: number };
+>;
+/** Respuesta `{status, message}` de los endpoints de backup (restaurar / borrar BD). */
+export type BackupActionResult =
+  paths["/api/backup"]["delete"]["responses"][200]["content"]["application/json"];
 export type ImportResult = components["schemas"]["ImportResult"];
 export type CsvPreviewResult = components["schemas"]["CsvPreviewResult"];
 export type CsvImportMappedResult = components["schemas"]["CsvImportMappedResult"];
@@ -321,6 +324,22 @@ export const api = {
       apiFetch<SuggestResponse | null>(
         `/api/categorization-rules/suggest?concept=${encodeURIComponent(concept)}`,
       ),
+  },
+
+  backup: {
+    // La descarga se hace con un <a href="/api/backup" download> desde la UI:
+    // es una descarga del navegador y no tiene que pasar por aquí.
+    restore: (file: File) => {
+      const body = new FormData();
+      body.append("file", file);
+      return apiFetch<BackupActionResult>("/api/backup/restore", {
+        method: "POST",
+        headers: {},
+        body,
+      });
+    },
+    deleteDatabase: () =>
+      apiFetch<BackupActionResult>("/api/backup", { method: "DELETE" }),
   },
 
   tags: {

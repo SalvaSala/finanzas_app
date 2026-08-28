@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Download, Upload, Trash2, AlertTriangle } from "lucide-react";
 
+import { api } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -112,13 +113,7 @@ export function SettingsPage() {
     if (!pendingFile) return;
     setRestoring(true);
     try {
-      const body = new FormData();
-      body.append("file", pendingFile);
-      const res = await fetch("/api/backup/restore", { method: "POST", body });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail ?? "Error desconocido");
-      }
+      await api.backup.restore(pendingFile);
       toast.success("Copia de seguridad restaurada. Recarga la página para ver los datos.");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Error al restaurar");
@@ -131,11 +126,7 @@ export function SettingsPage() {
   async function handleDeleteDatabase() {
     setDeleting(true);
     try {
-      const res = await fetch("/api/backup", { method: "DELETE" });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail ?? "Error desconocido");
-      }
+      await api.backup.deleteDatabase();
       toast.success("Base de datos borrada. Recargando…");
       setTimeout(() => window.location.reload(), 1000);
     } catch (e: unknown) {
