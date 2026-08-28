@@ -1,0 +1,124 @@
+# Comprobaciones de calidad en cada cambio: lint, tipos y tests.
+#
+# Complementa a build.yml (que solo construye los instalables al publicar una
+# release). Aquí se vigila que la rama principal no acumule deuda: formato,
+# tipado, tests de backend y frontend, y la sincronía de los tipos de la API.
+
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  backend:
+    name: Backend (lint, tipos, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Ruff (lint)
+        run: uv run ruff check .
+
+      - name: Black (formato)
+        run: uv run black --check .
+
+      - name: Mypy (tipos)
+        run: uv run mypy .
+
+      - name: Pytest
+        run: uv run pytest
+
+  frontend:
+    name: Frontend (lint, tipos, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: Vitest
+        run: npm run test:run
+
+  api-types:
+    name: Tipos del frontend en sincronía con la API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync
+
+      - name: Volcar el esquema OpenAPI
+        working-directory: backend
+        run: |
+          uv run python -c "import json; from app.main import app; print(json.dumps(app.openapi()))" > "$RUNNER_TEMP/openapi.json"
+
+      - name: Regenerar los tipos y comparar
+        working-directory: frontend
+        run: |
+          npx --yes openapi-typescript@7 "$RUNNER_TEMP/openapi.json" -o "$RUNNER_TEMP/schema.d.ts"
+          if ! diff -u src/api/schema.d.ts "$RUNNER_TEMP/schema.d.ts"; then
+            echo ""
+            echo "::error::Los tipos del frontend no coinciden con el esquema de la API."
+            echo "Arranca el backend y ejecuta 'npm run gen:api' en frontend/, luego commitea src/api/schema.d.ts."
+            exit 1
+          fi
