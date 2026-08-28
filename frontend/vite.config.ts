@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { fileURLToPath, URL } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
@@ -17,6 +18,20 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://localhost:8000",
+    },
+  },
+  test: {
+    environment: "jsdom",
+    // Los flujos con Radix + userEvent sobre jsdom son lentos.
+    testTimeout: 20000,
+    globals: true,
+    setupFiles: ["./src/test/setup.ts"],
+    css: false,
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      // Tipos generados, punto de entrada y los propios tests no cuentan.
+      exclude: ["src/api/schema.d.ts", "src/main.tsx", "src/test/**", "src/**/*.test.{ts,tsx}"],
     },
   },
 });
