@@ -5,6 +5,7 @@ Ejecutar desde la raíz del proyecto:
     uv run --project backend python scripts/create_example_db.py
 """
 
+import os
 import sys
 from datetime import date
 from decimal import Decimal
@@ -13,10 +14,29 @@ from pathlib import Path
 _backend = Path(__file__).resolve().parent.parent / "backend"
 sys.path.insert(0, str(_backend))
 
-from sqlalchemy import create_engine, text
-from sqlmodel import SQLModel, Session
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "example.db"
 
-from app.models import (
+# El esquema se crea aplicando las migraciones de Alembic (`run_migrations`), no con
+# `SQLModel.metadata.create_all`. Motivo: `create_all` deja la BD SIN la tabla
+# `alembic_version` sellada, así que al copiar esta BD a la carpeta de datos del
+# usuario la app intenta aplicar la migración inicial sobre un esquema que ya existe
+# y muere con "table accounts already exists". Aplicando las migraciones, la BD de
+# demo nace exactamente igual que la de la app real y queda sellada en head.
+#
+# `alembic/env.py` fija la URL desde `get_settings()`, así que la única manera de
+# apuntar las migraciones a example.db es la variable de entorno FINAPP_DATABASE_URL,
+# y hay que definirla ANTES de importar nada de `app` (los settings se cachean con
+# `lru_cache` y el engine de `app.core.db` se crea al importar el módulo).
+os.environ["FINAPP_DATABASE_URL"] = f"sqlite:///{DB_PATH}"
+
+if DB_PATH.exists():
+    DB_PATH.unlink()
+
+from sqlalchemy import text  # noqa: E402
+from sqlmodel import Session  # noqa: E402
+
+from app.core.db import engine, run_migrations  # noqa: E402
+from app.models import (  # noqa: E402
     Account, AccountType,
     Category, CategoryType,
     Transaction, TransactionType,
@@ -25,14 +45,6 @@ from app.models import (
     SavingsGoal,
     CategorizationRule,
 )
-
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "example.db"
-
-if DB_PATH.exists():
-    DB_PATH.unlink()
-
-engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
-SQLModel.metadata.create_all(engine)
 
 
 def seed(session: Session) -> None:
@@ -195,7 +207,10 @@ def seed(session: Session) -> None:
     ])
 
     session.commit()
+
+    revision = session.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
     print(f"✅ Base de datos creada: {DB_PATH}")
+    print(f"   revisión Alembic: {revision}")
     print(f"   4 cuentas")
     print(f"   {len(cats)} categorías")
     print(f"   4 etiquetas")
@@ -206,5 +221,7 @@ def seed(session: Session) -> None:
 
 
 if __name__ == "__main__":
+    # Crea el esquema y sella `alembic_version` en la revisión head.
+    run_migrations()
     with Session(engine) as session:
         seed(session)
