@@ -15,7 +15,7 @@ App de **finanzas personales** para registrar ingresos/gastos y analizarlos en u
 
 **Backend (Python):** FastAPI · SQLModel (SQLAlchemy + Pydantic) · SQLite (→ PostgreSQL en nube) · Alembic · Uvicorn · pytest · ruff + black + mypy · uv.
 
-**Frontend (TypeScript):** Vite · React · TailwindCSS v4 (config CSS-first, sin `tailwind.config.js`; plugin `@tailwindcss/vite`) · shadcn/ui · Apache ECharts (gráficos) · TanStack Query · TanStack Table · React Hook Form + Zod.
+**Frontend (TypeScript):** Vite · React · TailwindCSS v4 (config CSS-first, sin `tailwind.config.js`; plugin `@tailwindcss/vite`) · shadcn/ui · Apache ECharts (gráficos) · TanStack Query · TanStack Table · React Hook Form + Zod · Vitest + Testing Library (tests).
 
 **Comunicación:** API REST bajo `/api`. Tipos del frontend generados desde el esquema **OpenAPI** de FastAPI (`openapi-typescript`).
 
@@ -82,6 +82,9 @@ npm install                              # instalar dependencias
 npm run dev                              # arrancar UI en desarrollo (Vite)
 npm run build                            # compilar a estáticos (frontend/dist)
 npm run lint                             # ESLint
+npm run test                             # tests en modo watch (Vitest)
+npm run test:run                         # tests una vez (lo que ejecuta la CI)
+npm run test:coverage                    # tests + informe de cobertura
 npm run gen:api                          # regenerar tipos TS desde OpenAPI
 ```
 
@@ -132,12 +135,19 @@ para no refactorizar después (detalle en `packaging/README.md`):
 - Aplicar **migraciones Alembic en el primer arranque**.
 - Punto de entrada de escritorio (FastAPI + pywebview) en `packaging/desktop.py`.
 - La CI (`.github/workflows/build.yml`) construye los instalables en Windows y Linux al publicar una release.
+- La CI (`.github/workflows/checks.yml`) ejecuta en cada push y PR a `main`: lint,
+  formato, tipos y tests de backend y frontend, y **comprueba que los tipos TS del
+  frontend siguen en sincronía con el esquema OpenAPI**. Si ese job falla, arranca el
+  backend y ejecuta `npm run gen:api`.
 
 ## Boundaries (qué hacer / preguntar / no hacer)
 
 **Siempre:**
 - Ejecutar lint, formato y tests antes de dar por terminada una tarea.
 - Regenerar los tipos TS del frontend (`npm run gen:api`) cuando cambie la API.
+  La CI lo vigila (job `api-types` de `checks.yml`), pero es más rápido hacerlo al tocar la API.
+- Consumir la API **siempre** a través de `frontend/src/api/client.ts`, nunca con `fetch`
+  suelto: es lo que hace que un tipo desincronizado lo cace `tsc` en vez de fallar en runtime.
 - Crear migración Alembic cuando cambie el modelo de datos.
 - Tras actualizar dependencias, regenerar el instalable y probarlo (no solo el modo desarrollo).
 - Commitear directamente en main (proyecto monousuario; se revisará cuando haya colaboradores).
