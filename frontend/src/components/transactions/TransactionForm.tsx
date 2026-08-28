@@ -171,17 +171,21 @@ export function TransactionForm({
     }
   }, [open, transaction, duplicateFrom, accounts, form]);
 
-  // Reset category when type changes
-  useEffect(() => {
+  // Al cambiar el tipo o la categoría hay que limpiar los campos dependientes,
+  // pero SOLO cuando lo cambia el usuario. Hacerlo con un `useEffect` sobre el
+  // valor observado también se disparaba al precargar un movimiento para
+  // editarlo, borrando su categoría y subcategoría recién cargadas.
+  function handleTypeChange(value: string) {
+    form.setValue("type", value as FormValues["type"]);
     form.setValue("category_id", "");
     form.setValue("subcategory_id", "");
     form.setValue("transfer_account_id", "");
-  }, [selectedType, form]);
+  }
 
-  // Reset subcategory when category changes
-  useEffect(() => {
+  function handleCategoryChange(value: string) {
+    form.setValue("category_id", value);
     form.setValue("subcategory_id", "");
-  }, [selectedCategoryId, form]);
+  }
 
   async function onSubmit(values: FormValues) {
     const amount = values.amount.replace(",", ".");
@@ -266,7 +270,7 @@ export function TransactionForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={handleTypeChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -402,7 +406,7 @@ export function TransactionForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Categoría</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={handleCategoryChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Sin categoría" />
