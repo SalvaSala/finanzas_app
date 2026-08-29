@@ -5,6 +5,7 @@ Arranca el servidor FastAPI en un hilo en segundo plano y abre una ventana
 nativa de escritorio (pywebview) que apunta al servidor local. Este es el
 archivo que ejecuta el usuario final cuando hace doble clic en el instalable.
 """
+
 from __future__ import annotations
 
 import logging
@@ -13,7 +14,6 @@ import socket
 import sys
 import threading
 import time
-import traceback
 from pathlib import Path
 
 import uvicorn

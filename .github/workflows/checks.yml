@@ -38,14 +38,24 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      # Se revisa también ../packaging: desktop.py es el punto de entrada de la app
+      # de escritorio y hasta ahora era el único código que llegaba al usuario final
+      # sin que nada lo comprobara —ni tests, ni linter, ni tipos—, así que una
+      # errata ahí solo se descubría construyendo el instalable y viendo que no abre.
+      # scripts/ queda fuera a propósito: son utilidades de desarrollo que no se
+      # empaquetan, y hoy acumulan 53 avisos de estilo que no aportan nada arreglar.
       - name: Ruff (lint)
-        run: uv run ruff check .
+        run: uv run ruff check . ../packaging
 
+      # --config explícito: al recibir dos rutas, black busca la configuración en el
+      # ancestro común (la raíz del repo, que no tiene pyproject.toml) y se cae a sus
+      # 88 columnas por defecto en vez de las 100 nuestras. Sin esto, la CI pediría
+      # reformatear 49 ficheros que están perfectamente. ruff no tiene ese problema.
       - name: Black (formato)
-        run: uv run black --check .
+        run: uv run black --check --config pyproject.toml . ../packaging
 
       - name: Mypy (tipos)
-        run: uv run mypy .
+        run: uv run mypy . ../packaging
 
       - name: Pytest
         run: uv run pytest
