@@ -18,7 +18,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Linux se construye sobre la versión de Ubuntu MÁS ANTIGUA que queramos
+        # soportar, no sobre la última: glibc solo es compatible hacia adelante, así
+        # que un binario hecho en 24.04 (glibc 2.39) no arranca en 22.04 (glibc 2.35)
+        # ni en las distros derivadas, como Linux Mint 21. Al revés sí funciona.
+        os: [ubuntu-22.04, windows-latest]
 
     steps:
       - name: Checkout

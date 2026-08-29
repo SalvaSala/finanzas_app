@@ -74,6 +74,25 @@ solo la 4.1 el binario salía sin WebKit y la ventana no abría.
 > y el binario de Linux en Linux. Para no necesitar ambas máquinas, usar la CI de
 > GitHub Actions (`.github/workflows/build.yml`).
 
+### Sobre qué versión de Linux construir
+
+`glibc`, la librería base del sistema, **solo es compatible hacia adelante**: un
+binario construido con una versión antigua funciona en sistemas nuevos, pero uno
+construido con una versión nueva **no arranca** en sistemas antiguos, y falla así:
+
+```
+ImportError: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
+```
+
+Por eso el workflow fija `ubuntu-22.04` (glibc 2.35) en lugar de `ubuntu-latest`:
+así el binario sirve para Ubuntu 22.04 y todo lo posterior, incluidas las distros
+derivadas como **Linux Mint 21**. Construir en `ubuntu-latest` dejaría fuera a
+cualquiera con un sistema de más de un par de años.
+
+**Regla:** construir siempre en la versión más antigua que se quiera soportar, no
+en la más reciente. Si algún día hay que subirla, se pierde compatibilidad con las
+distros viejas: es una decisión de a quién se deja atrás, no un detalle técnico.
+
 ## Ganchos que el código debe respetar (desde la Fase 1)
 
 Para que el empaquetado funcione sin refactorizar al final, el backend debe
