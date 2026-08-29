@@ -90,9 +90,15 @@ npm run gen:api                          # regenerar tipos TS desde OpenAPI
 
 **Empaquetado** (desde la raíz):
 ```bash
-# 1) npm run build (frontend)  2) PyInstaller con frontend/dist incluido
-# Ver packaging/ para el spec concreto por plataforma.
+bash packaging/build_linux.sh          # Linux: frontend + PyInstaller
+powershell -File packaging/build_windows.ps1   # Windows
+
+# En Linux hace falta una vez, para que la ventana pueda abrirse:
+sudo apt install libgirepository1.0-dev libcairo2-dev gir1.2-webkit2-4.0 gir1.2-gtk-3.0
 ```
+Las herramientas de empaquetado están en el grupo `packaging` de `pyproject.toml`
+(`uv sync --group packaging`); un `uv sync` normal no las instala. Detalle y lista
+de comprobación del instalable en `packaging/README.md`.
 
 ## Estructura del repositorio
 
@@ -134,6 +140,13 @@ para no refactorizar después (detalle en `packaging/README.md`):
 - Centralizar en `app/core/paths.py` la **resolución de rutas** (desarrollo vs empaquetado, vía `sys._MEIPASS`) y la **ubicación de la base de datos** en la carpeta de datos del usuario del SO.
 - Aplicar **migraciones Alembic en el primer arranque**.
 - Punto de entrada de escritorio (FastAPI + pywebview) en `packaging/desktop.py`.
+- **Todo recurso que el backend abra por ruta de fichero debe declararse en
+  `packaging/finapp.spec`** (`datas`), o el binario se construye bien y falla al
+  ejecutarse. Ya están el frontend compilado, las migraciones, las fuentes DejaVu
+  del informe PDF y los typelibs de GTK.
+- En Linux, la ventana necesita **PyGObject** (grupo `packaging`) más las librerías
+  de sistema de GTK/WebKit. Sin ellas el binario arranca pero **la ventana no abre**:
+  comprobarlo siempre, no basta con que el servidor responda.
 - La CI (`.github/workflows/build.yml`) construye los instalables en Windows y Linux al publicar una release.
 - La CI (`.github/workflows/checks.yml`) ejecuta en cada push y PR a `main`: lint,
   formato, tipos y tests de backend y frontend, y **comprueba que los tipos TS del

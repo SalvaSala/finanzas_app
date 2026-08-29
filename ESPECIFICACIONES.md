@@ -294,6 +294,23 @@ El reto de la Opción B es empaquetar un frontend web + backend Python como app 
 4. **Instalable:** empaquetar con **PyInstaller** (incluyendo `frontend/dist`) → `.exe`/instalador en Windows y **AppImage**/`.deb` en Linux.
 5. En el **primer arranque**, crear la base de datos y aplicar migraciones automáticamente.
 
+**Dependencias de la ventana según plataforma.** pywebview usa un motor distinto en
+cada sistema: en **Windows**, EdgeChromium (ya presente en el SO); en **Linux**,
+GTK/WebKit a través de **PyGObject**, que hay que instalar en el entorno de
+construcción (grupo `packaging` de `pyproject.toml`) junto a las cabeceras del
+sistema `libgirepository1.0-dev`, `libcairo2-dev` y `gir1.2-webkit2-4.0`.
+
+> **Riesgo a tener presente:** si falta PyGObject, el instalable **se genera sin
+> errores y su servidor interno arranca**, pero la ventana nunca aparece. Por eso
+> la comprobación de un instalable no puede limitarse a "responde el servidor":
+> hay que abrirlo. La lista completa de verificación está en `packaging/README.md`.
+
+**Recursos que deben viajar dentro del paquete.** Todo lo que el backend abre por
+ruta de fichero hay que declararlo en `packaging/finapp.spec`: el frontend
+compilado, las migraciones de Alembic, las **fuentes DejaVu** del informe PDF y los
+typelibs de GTK en Linux. Si falta alguno, el binario se construye bien y falla al
+usarse (p. ej. el PDF devolviendo un error 500).
+
 **Alternativas de empaquetado** (si se busca algo más nativo): **Tauri** (ligero, requiere toolchain de Rust) o **Electron** (más pesado). Ambos lanzarían el backend FastAPI como sidecar.
 
 ---
