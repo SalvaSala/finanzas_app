@@ -43,11 +43,23 @@ jobs:
           npm ci
           npm run build
 
+      # PyGObject (el backend GTK de pywebview en Linux) se compila contra estas
+      # cabeceras, y WebKit2 necesita su typelib en tiempo de ejecución. Sin ellas
+      # el binario se genera igual, pero la ventana nunca abre.
+      - name: Install GTK/WebKit system libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgirepository1.0-dev \
+            libcairo2-dev \
+            gir1.2-webkit2-4.0 \
+            gir1.2-gtk-3.0
+
       - name: Install backend deps
         working-directory: backend
-        run: |
-          uv sync
-          uv pip install pyinstaller pywebview
+        # El grupo `packaging` trae PyInstaller y, solo en Linux, PyGObject.
+        run: uv sync --group packaging
 
       - name: Package with PyInstaller
         working-directory: backend

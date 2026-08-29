@@ -23,6 +23,22 @@ dev = [
     "httpx>=0.28",
 ]
 
+# Herramientas necesarias solo para generar el instalable. Van en un grupo aparte
+# (no se instala con `uv sync` a secas) para no exigir las librerías de sistema de
+# GTK a quien solo quiere desarrollar o ejecutar los tests. Lo instalan los scripts
+# de packaging/ con `uv sync --group packaging`.
+packaging = [
+    "pyinstaller>=6.11",
+    # Backend GTK de pywebview en Linux. Sin esto la ventana NO abre: finapp.spec
+    # hace `collect_submodules("gi")`, que si PyGObject no está instalado no recoge
+    # nada, y el binario muere con "No module named 'gi'". Requiere en el sistema
+    # libgirepository1.0-dev, libcairo2-dev y gir1.2-webkit2-4.0 (ver packaging/README.md).
+    # Fijado a <3.51 porque a partir de esa versión PyGObject pasa a girepository-2.0,
+    # que no está en las distros LTS que empaquetamos.
+    "pygobject>=3.50,<3.51; sys_platform == 'linux'",
+    "pycairo>=1.26; sys_platform == 'linux'",
+]
+
 # Proyecto-aplicación: no se publica como paquete instalable.
 # `uv run uvicorn app.main:app` funciona porque el cwd es backend/ y `app/` es importable.
 [tool.uv]

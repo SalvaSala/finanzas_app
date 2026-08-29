@@ -16,9 +16,29 @@ npm run build
 popd >/dev/null
 
 echo "==> 2/3  Preparando el backend"
+
+# PyGObject se compila contra las cabeceras de gobject-introspection y cairo, y en
+# tiempo de ejecución necesita el typelib de WebKit2. Si falta algo, es mejor parar
+# aquí con un mensaje claro que descubrirlo con un binario que no abre la ventana.
+missing_pkgs=()
+pkg-config --exists gobject-introspection-1.0 || missing_pkgs+=("libgirepository1.0-dev")
+pkg-config --exists cairo || missing_pkgs+=("libcairo2-dev")
+ls /usr/lib/*/girepository-1.0/WebKit2-4.*.typelib >/dev/null 2>&1 \
+    || missing_pkgs+=("gir1.2-webkit2-4.0")
+
+if (( ${#missing_pkgs[@]} > 0 )); then
+    echo "ERROR: faltan librerías de sistema necesarias para la ventana de escritorio:" >&2
+    printf '  - %s\n' "${missing_pkgs[@]}" >&2
+    echo >&2
+    echo "Instálalas con:" >&2
+    echo "  sudo apt install ${missing_pkgs[*]}" >&2
+    exit 1
+fi
+
 pushd backend >/dev/null
-uv sync
-uv pip install pyinstaller pywebview
+# El grupo `packaging` trae PyInstaller y, en Linux, PyGObject: sin él la ventana
+# no abre porque finapp.spec no encuentra el módulo `gi`.
+uv sync --group packaging
 popd >/dev/null
 
 echo "==> 3/3  Empaquetando con PyInstaller"

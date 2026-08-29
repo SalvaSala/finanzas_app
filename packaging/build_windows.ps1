@@ -10,8 +10,9 @@ Pop-Location
 
 Write-Host "==> 2/3  Preparando el backend"
 Push-Location backend
-uv sync
-uv pip install pyinstaller pywebview
+# El grupo `packaging` trae PyInstaller. PyGObject queda fuera en Windows (lo marca
+# `sys_platform == 'linux'` en pyproject.toml): aquí pywebview usa EdgeChromium.
+uv sync --group packaging
 Pop-Location
 
 Write-Host "==> 3/3  Empaquetando con PyInstaller"
