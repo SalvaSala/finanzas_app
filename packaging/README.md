@@ -203,12 +203,24 @@ cd dist/FinApp && ./FinApp
    Se puede verificar sin mirar la pantalla con `wmctrl -l | grep FinApp`.
 2. **La interfaz se ve y los gráficos pintan** (ECharts sobre WebKit, que no es el
    mismo motor que el navegador de desarrollo).
-3. **El informe PDF se descarga**: `curl -s -o /tmp/i.pdf -w '%{http_code}' \
-   "http://127.0.0.1:8765/api/reports/pdf?year=2026&month=6"` → 200 y un fichero
-   que empieza por `%PDF`. Depende de que las fuentes DejaVu estén empaquetadas.
-4. **La copia de seguridad se descarga**: `/api/backup` → 200.
+3. **Las tres descargas funcionan PULSANDO EL BOTÓN EN LA VENTANA**, no con `curl`:
+   el informe PDF (panel principal), el export CSV (movimientos) y la copia de
+   seguridad (ajustes). Debe abrirse un diálogo nativo de "Guardar como" y quedar
+   el fichero en disco.
+4. **Las dos subidas funcionan**: importar CSV y restaurar la base de datos abren
+   el diálogo de selección de fichero y lo procesan.
 5. **Los enlaces directos funcionan**: `/transacciones`, `/graficos` → 200 (no 404).
 6. **Con la BD borrada, la app arranca y la recrea** aplicando las migraciones.
+
+> ⚠️ **`curl` no vale para comprobar las descargas.** Prueba el servidor, no la
+> ventana, y son dos cosas distintas: pywebview trae `ALLOW_DOWNLOADS` desactivado
+> de fábrica, así que el servidor devolvía el PDF correctamente **y la ventana lo
+> tiraba a la basura sin decir nada**. En Windows el motor cancela la descarga
+> (`args.Cancel = True`) y en Linux ni conecta el manejador: en ambos casos, ni
+> error ni aviso. Las subidas seguían funcionando —los diálogos de apertura los
+> implementa pywebview aparte—, lo que hacía pensar que la app estaba sana.
+> La lista de antes decía "comprobar con `curl`" y por eso el fallo sobrevivió a
+> todas las verificaciones anteriores.
 
 ## Tras actualizar dependencias
 

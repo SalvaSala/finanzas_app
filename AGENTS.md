@@ -148,6 +148,11 @@ para no refactorizar después (detalle en `packaging/README.md`):
 - En Linux, la ventana necesita **PyGObject** (grupo `packaging`) más las librerías
   de sistema de GTK/WebKit. Sin ellas el binario arranca pero **la ventana no abre**:
   comprobarlo siempre, no basta con que el servidor responda.
+- **Las descargas se prueban pulsando el botón en la ventana, nunca con `curl`.**
+  pywebview trae `ALLOW_DOWNLOADS` desactivado de fábrica (lo activa
+  `packaging/desktop.py`): sin eso el servidor devuelve el fichero y la ventana lo
+  descarta en silencio, en Linux y en Windows. Afecta al informe PDF, al export CSV
+  y a la copia de seguridad; las subidas no, porque usan otro mecanismo.
 - La CI (`.github/workflows/build.yml`) construye los instalables al publicar una
   release: un `FinApp-x86_64.AppImage` en Linux y un `FinApp-windows-x86_64.zip` en
   Windows. Los sube como artefactos del run (que caducan) **y** los adjunta a la

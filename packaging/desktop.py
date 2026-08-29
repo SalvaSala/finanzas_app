@@ -92,6 +92,19 @@ def main() -> None:
         sys.exit(1)
 
     logging.info("Servidor listo, abriendo ventana...")
+
+    # pywebview trae las descargas DESACTIVADAS de fábrica, y sin esto la app no
+    # puede sacar nada al disco: el informe PDF, el export CSV y la copia de
+    # seguridad se piden con un enlace normal (<a download>), y la ventana los
+    # descarta. En Windows el motor las cancela explícitamente (args.Cancel) y en
+    # Linux ni siquiera conecta el manejador, así que en los dos casos el fallo es
+    # el mismo: no pasa nada y no hay error. Abrir ficheros sí funcionaba, porque
+    # los diálogos de apertura los implementa pywebview aparte; de ahí que
+    # importar CSV o restaurar la BD parecieran sanos.
+    # Activado, ambos motores abren un "Guardar como" nativo en Descargas con el
+    # nombre que manda el servidor en Content-Disposition.
+    webview.settings["ALLOW_DOWNLOADS"] = True
+
     webview.create_window(
         "FinApp",
         f"http://{HOST}:{PORT}",
