@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="FinApp", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="FinApp", version="1.0.0", lifespan=lifespan)
 
 
 @app.exception_handler(NotFoundError)
