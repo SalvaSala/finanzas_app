@@ -97,6 +97,35 @@ jobs:
         if: runner.os == 'Windows'
         run: Compress-Archive -Path dist/FinApp -DestinationPath dist/FinApp-windows-x86_64.zip
 
+      # Inno Setup convierte esa carpeta en un instalador con asistente, acceso
+      # directo y desinstalador: lo que un usuario de Windows espera, y el
+      # equivalente a lo que el AppImage resuelve en Linux. La versión se lee de
+      # pyproject.toml para no tener otra copia del número que se quede vieja.
+      - name: Construir el instalador (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $v = (Get-Content backend/pyproject.toml |
+                Select-String -Pattern '^version = "(.*)"' |
+                Select-Object -First 1).Matches.Groups[1].Value
+          Write-Host "Versión leída de pyproject.toml: $v"
+
+          # La imagen del runner suele traer Inno Setup, pero no en el PATH.
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+                      "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
+                    Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) {
+            Write-Host "Inno Setup no encontrado; instalándolo."
+            choco install innosetup -y --no-progress
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+
+          & $iscc packaging\finapp.iss /DAppVersion=$v
+          if ($LASTEXITCODE -ne 0) { throw "ISCC falló con código $LASTEXITCODE" }
+          Get-ChildItem dist\*setup.exe
+
       - name: Upload artifact (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
@@ -105,6 +134,16 @@ jobs:
           path: dist/FinApp-x86_64.AppImage
 
       - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinApp-windows-installer
+          path: dist/FinApp-*-setup.exe
+
+      # El zip de la carpeta suelta se conserva como artefacto del run —sirve para
+      # depurar y para quien quiera llevárselo sin instalar— pero NO se adjunta a la
+      # release: allí va un único descargable por sistema, para no hacer elegir.
+      - name: Upload artifact (Windows, carpeta sin instalar)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
@@ -127,4 +166,4 @@ jobs:
         if: runner.os == 'Windows' && github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" dist/FinApp-windows-x86_64.zip --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" (Get-ChildItem dist\FinApp-*-setup.exe).FullName --clobber

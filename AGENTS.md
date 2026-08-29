@@ -154,9 +154,10 @@ para no refactorizar después (detalle en `packaging/README.md`):
   descarta en silencio, en Linux y en Windows. Afecta al informe PDF, al export CSV
   y a la copia de seguridad; las subidas no, porque usan otro mecanismo.
 - La CI (`.github/workflows/build.yml`) construye los instalables al publicar una
-  release: un `FinApp-x86_64.AppImage` en Linux y un `FinApp-windows-x86_64.zip` en
-  Windows. Los sube como artefactos del run (que caducan) **y** los adjunta a la
-  release (permanentes), que es de donde los descarga el usuario final.
+  release: un `FinApp-x86_64.AppImage` en Linux y un `FinApp-<version>-setup.exe`
+  (Inno Setup) en Windows. Los sube como artefactos del run (que caducan) **y** los
+  adjunta a la release (permanentes), que es de donde los descarga el usuario final.
+  La versión del instalador se lee de `pyproject.toml`: no duplicarla en el `.iss`.
 - La CI (`.github/workflows/checks.yml`) ejecuta en cada push y PR a `main`: lint,
   formato, tipos y tests de backend y frontend, y **comprueba que los tipos TS del
   frontend siguen en sincronía con el esquema OpenAPI**. Si ese job falla, arranca el

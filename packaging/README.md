@@ -14,6 +14,7 @@ instalable cuando se quiere publicar una versión.
 | `build_linux.sh` | Construye el ejecutable en Linux. |
 | `build_windows.ps1` | Construye el ejecutable en Windows. |
 | `build_appimage.sh` | Empaqueta el resultado de `build_linux.sh` en un AppImage de un solo fichero. |
+| `finapp.iss` | Receta de Inno Setup: convierte `dist\FinApp` en el instalador de Windows. |
 
 ## Requisitos previos
 
@@ -98,14 +99,46 @@ de la CI (Ubuntu 22.04) y no de la máquina de desarrollo.
 > `APPIMAGE_EXTRACT_AND_RUN=1` para que se extraiga en un temporal en lugar de
 > montarse. Se puede forzar a mano para reproducir en local lo que hace la CI.
 
+### Del directorio al instalador (Inno Setup, solo Windows)
+
+Windows tiene el mismo problema que Linux —el `.exe` y `_internal\` son
+inseparables— pero no existe un equivalente al AppImage. La solución idiomática es
+un **instalador**: `packaging/finapp.iss` produce un `FinApp-1.0.0-setup.exe` que
+copia todo a la carpeta de programas del usuario y deja acceso directo en el menú
+Inicio y desinstalador en el panel de control.
+
+```powershell
+powershell -File packaging\build_windows.ps1    # hace las dos cosas
+iscc packaging\finapp.iss /DAppVersion=1.0.0    # solo el instalador
+```
+
+Tres decisiones que conviene conocer antes de tocar el `.iss`:
+
+- **`AppId` es un GUID fijo.** Es lo que identifica la app entre versiones: mientras
+  no cambie, un instalador nuevo *actualiza* la instalación en vez de crear una
+  segunda copia. No tocarlo nunca.
+- **`PrivilegesRequired=lowest`**: instala en la carpeta de programas del usuario y
+  **no lanza el aviso de UAC**. La base de datos vive en `%APPDATA%`, no en la
+  carpeta de instalación, así que desinstalar no borra los datos.
+- **La versión se pasa con `/DAppVersion`**, leída de `backend/pyproject.toml`. El
+  número ya vive en cinco sitios; no se añade un sexto que se quede viejo.
+
+El `.exe` no está firmado, así que **SmartScreen avisará** al descargarlo
+(*Más información → Ejecutar de todas formas*). Evitarlo requiere un certificado de
+firma de código de pago.
+
 ### Qué publica la CI
 
-`build.yml` produce **un solo fichero descargable por sistema**:
+`build.yml` adjunta a la release **un solo fichero descargable por sistema**:
 
 | Sistema | Fichero | Cómo se usa |
 |---|---|---|
 | Linux | `FinApp-x86_64.AppImage` | `chmod +x` y ejecutar; o doble clic. |
-| Windows | `FinApp-windows-x86_64.zip` | Descomprimir y ejecutar `FinApp\FinApp.exe`. |
+| Windows | `FinApp-1.0.0-setup.exe` | Doble clic → asistente de instalación. |
+
+El zip de la carpeta suelta (`FinApp-windows-x86_64.zip`) se sigue generando como
+artefacto del run —sirve para depurar y para quien la quiera portable— pero **no**
+se adjunta a la release, para no obligar al usuario a elegir.
 
 Ambos se suben **dos veces**, y la diferencia importa:
 
@@ -232,6 +265,5 @@ para builds reproducibles.
 
 ## Pasos opcionales para pulir
 
-- **Windows:** crear un instalador con asistente usando **Inno Setup**.
 - **Linux:** empaquetar como **AppImage** (con `appimagetool`/`linuxdeploy`) o `.deb`.
 - Añadir un icono de la app (`packaging/icon.ico`) y descomentar la línea `icon=` en `finapp.spec`.
