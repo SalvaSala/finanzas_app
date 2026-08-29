@@ -47,11 +47,12 @@ hiddenimports = list(collect_submodules("uvicorn"))
 hooksconfig = {}
 
 if PLATFORM == "linux":
-    INCLUDE_TYPELIBS = [
-        "WebKit2-4.0",
-        "WebKit2WebExtension-4.0",
-        "JavaScriptCore-4.0",
-        "Soup-2.4",
+    # WebKit2 viene en dos sabores según la distro y NO son intercambiables: la 4.1
+    # va con Soup 3.0 (Ubuntu 24.04 en adelante, y es la única que trae el runner de
+    # la CI) y la 4.0 con Soup 2.4 (distros más antiguas). Se usa la que haya.
+    WEBKIT_VARIANTS = [("4.1", "Soup-3.0"), ("4.0", "Soup-2.4")]
+
+    BASE_TYPELIBS = [
         "Gtk-3.0",
         "Gdk-3.0",
         "GdkPixbuf-2.0",
@@ -67,12 +68,46 @@ if PLATFORM == "linux":
         "cairo-1.0",
     ]
     typelib_src = "/usr/lib/x86_64-linux-gnu/girepository-1.0"
-    gi_typelib_datas = [
+
+    def _has_typelib(name):
+        return os.path.exists(os.path.join(typelib_src, f"{name}.typelib"))
+
+    # Elegir la variante de WebKit disponible. Antes se pedía la 4.0 a secas y las
+    # que faltaban se omitían en silencio: en una distro con solo la 4.1 el binario
+    # se construía sin WebKit y la ventana no abría, sin ningún aviso.
+    webkit_typelibs = None
+    for version, soup in WEBKIT_VARIANTS:
+        candidate = [
+            f"WebKit2-{version}",
+            f"WebKit2WebExtension-{version}",
+            f"JavaScriptCore-{version}",
+            soup,
+        ]
+        if all(_has_typelib(name) for name in candidate):
+            webkit_typelibs = candidate
+            break
+
+    if webkit_typelibs is None:
+        raise SystemExit(
+            f"No se encontró ninguna versión de WebKit2 en {typelib_src}.\n"
+            "Sin ella el binario se construye pero la ventana no abre. Instala:\n"
+            "  sudo apt install gir1.2-webkit2-4.1   # Ubuntu 24.04+\n"
+            "  sudo apt install gir1.2-webkit2-4.0   # distros más antiguas"
+        )
+
+    INCLUDE_TYPELIBS = webkit_typelibs + BASE_TYPELIBS
+
+    missing = [name for name in INCLUDE_TYPELIBS if not _has_typelib(name)]
+    if missing:
+        raise SystemExit(
+            "Faltan typelibs necesarios para la ventana: " + ", ".join(missing) + "\n"
+            "Instala gir1.2-gtk-3.0 y las librerías indicadas en packaging/README.md."
+        )
+
+    datas += [
         (os.path.join(typelib_src, f"{name}.typelib"), "girepository-1.0")
         for name in INCLUDE_TYPELIBS
-        if os.path.exists(os.path.join(typelib_src, f"{name}.typelib"))
     ]
-    datas += gi_typelib_datas
 
     hiddenimports += collect_submodules("gi")
     hiddenimports += collect_submodules("cairo")

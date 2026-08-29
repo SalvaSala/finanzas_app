@@ -26,6 +26,10 @@ GTK/WebKit a través de **PyGObject**, que se compila contra las cabeceras del
 sistema. Sin ellas la construcción falla (los scripts lo comprueban y avisan):
 
 ```bash
+# Ubuntu 24.04 o posterior (y el runner de la CI)
+sudo apt install libgirepository1.0-dev libcairo2-dev gir1.2-webkit2-4.1 gir1.2-gtk-3.0
+
+# Distros más antiguas (Ubuntu 22.04, Mint 21...), que traen la 4.0
 sudo apt install libgirepository1.0-dev libcairo2-dev gir1.2-webkit2-4.0 gir1.2-gtk-3.0
 ```
 
@@ -58,6 +62,13 @@ binario falla en tiempo de ejecución aunque se construya sin errores:
 | `backend/alembic` | `alembic` | Migraciones, que se aplican en el primer arranque. |
 | `backend/app/resources/fonts` | `app/resources/fonts` | Fuentes DejaVu del informe PDF (fpdf2 las abre por ruta). |
 | typelibs de GI (solo Linux) | `girepository-1.0` | GTK/WebKit para la ventana. |
+
+**Sobre las versiones de WebKit2.** Hay dos y no son intercambiables: la **4.1**
+va con Soup 3.0 (Ubuntu 24.04+) y la **4.0** con Soup 2.4 (distros anteriores).
+`finapp.spec` detecta cuál hay en el sistema y empaqueta el juego completo que
+corresponda; si no encuentra ninguna, **aborta la construcción**. Antes pedía la
+4.0 a secas y omitía en silencio lo que faltara, de modo que en un sistema con
+solo la 4.1 el binario salía sin WebKit y la ventana no abría.
 
 > **PyInstaller no permite compilación cruzada:** el `.exe` se genera en Windows
 > y el binario de Linux en Linux. Para no necesitar ambas máquinas, usar la CI de

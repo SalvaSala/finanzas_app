@@ -23,8 +23,10 @@ echo "==> 2/3  Preparando el backend"
 missing_pkgs=()
 pkg-config --exists gobject-introspection-1.0 || missing_pkgs+=("libgirepository1.0-dev")
 pkg-config --exists cairo || missing_pkgs+=("libcairo2-dev")
+# Sirve la 4.1 (Ubuntu 24.04+) o la 4.0 (distros más antiguas); finapp.spec
+# empaqueta la que encuentre.
 ls /usr/lib/*/girepository-1.0/WebKit2-4.*.typelib >/dev/null 2>&1 \
-    || missing_pkgs+=("gir1.2-webkit2-4.0")
+    || missing_pkgs+=("gir1.2-webkit2-4.1")
 
 if (( ${#missing_pkgs[@]} > 0 )); then
     echo "ERROR: faltan librerías de sistema necesarias para la ventana de escritorio:" >&2

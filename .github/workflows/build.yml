@@ -53,8 +53,11 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libgirepository1.0-dev \
             libcairo2-dev \
-            gir1.2-webkit2-4.0 \
             gir1.2-gtk-3.0
+          # WebKit2 4.1 (Ubuntu 24.04+) o 4.0 (imágenes más antiguas): el runner solo
+          # trae una de las dos, y finapp.spec empaqueta la que encuentre.
+          sudo apt-get install -y --no-install-recommends gir1.2-webkit2-4.1 \
+            || sudo apt-get install -y --no-install-recommends gir1.2-webkit2-4.0
 
       - name: Install backend deps
         working-directory: backend
