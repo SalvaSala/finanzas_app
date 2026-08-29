@@ -70,6 +70,16 @@ fi
 
 # ── 5. Descargar appimagetool si no está en caché ────────────────────────────
 echo "==> 2/4  Obteniendo appimagetool"
+
+# appimagetool es a su vez un AppImage, y para automontarse necesita libfuse2. Las
+# máquinas sin ella (los runners de GitHub Actions, contenedores) fallan con
+# "dlopen(): error loading libfuse.so.2". La variable le dice que se extraiga en un
+# temporal en lugar de montarse: algo más lento, pero funciona en cualquier sitio.
+if [[ -z "${APPIMAGE_EXTRACT_AND_RUN:-}" ]] \
+   && ! ldconfig -p 2>/dev/null | grep -q 'libfuse\.so\.2'; then
+    echo "    Sin libfuse2: appimagetool se ejecutará en modo extracción."
+    export APPIMAGE_EXTRACT_AND_RUN=1
+fi
 if [[ ! -f "$TOOL" ]]; then
     echo "    Descargando appimagetool..."
     curl -L -o "$TOOL" \

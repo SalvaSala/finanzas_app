@@ -1,8 +1,14 @@
 # Construye los instalables de FinApp en Windows y Linux automáticamente.
 #
 # Se dispara al publicar una "Release" en GitHub (o manualmente desde la pestaña
-# Actions). GitHub levanta una máquina de cada sistema, construye el instalable y
-# lo adjunta como artefacto descargable. Así no necesitas tener ambas máquinas.
+# Actions). GitHub levanta una máquina de cada sistema, construye el instalable y:
+#   - lo sube como artefacto del run (siempre), para poder probarlo antes de publicar;
+#   - lo adjunta a la release (solo cuando el disparador es una release publicada),
+#     que es donde lo encuentra quien vaya a descargar la app.
+#
+# Cada sistema produce UN único fichero descargable:
+#   Linux    → FinApp-x86_64.AppImage      (ejecutable suelto, sin instalar nada)
+#   Windows  → FinApp-windows-x86_64.zip   (carpeta comprimida con FinApp.exe)
 
 name: Build desktop installers
 
@@ -10,6 +16,11 @@ on:
   release:
     types: [published]
   workflow_dispatch: {}   # permite lanzarlo a mano
+
+# Necesario para que `gh release upload` pueda adjuntar los ficheros a la release.
+# Sin esto el token del workflow es de solo lectura y la subida falla con 403.
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -72,8 +83,48 @@ jobs:
         working-directory: backend
         run: uv run pyinstaller ../packaging/finapp.spec --distpath ../dist --workpath ../build --noconfirm
 
-      - name: Upload artifact
+      # PyInstaller deja una carpeta con el ejecutable y un _internal/ de 200 MB: los
+      # dos hay que moverlos juntos o no arranca. El AppImage los mete en un solo
+      # fichero que se ejecuta con doble clic, sin instalar nada.
+      - name: Build AppImage (Linux)
+        if: runner.os == 'Linux'
+        run: bash packaging/build_appimage.sh
+
+      # En Windows no hay equivalente al AppImage, así que se comprime la carpeta.
+      # Se incluye la carpeta entera (no su contenido) para que al descomprimir
+      # quede un FinApp\ con el .exe dentro, y no 500 ficheros sueltos.
+      - name: Comprimir la carpeta (Windows)
+        if: runner.os == 'Windows'
+        run: Compress-Archive -Path dist/FinApp -DestinationPath dist/FinApp-windows-x86_64.zip
+
+      - name: Upload artifact (Linux)
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: FinApp-${{ matrix.os }}
-          path: dist/FinApp
+          name: FinApp-linux-AppImage
+          path: dist/FinApp-x86_64.AppImage
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinApp-windows-zip
+          path: dist/FinApp-windows-x86_64.zip
+
+      # Los artefactos de arriba viven en el run y caducan a los 90 días; no aparecen
+      # en la página de la release. Este paso los adjunta ahí, que es donde los busca
+      # quien quiera descargar la app. Solo corre si el disparador fue una release:
+      # en un lanzamiento manual no hay ninguna a la que adjuntar.
+      - name: Adjuntar a la release (Linux)
+        if: runner.os == 'Linux' && github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # --clobber permite relanzar el workflow sobre la misma release sin que falle
+        # por "el fichero ya existe": lo reemplaza.
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/FinApp-x86_64.AppImage --clobber
+
+      - name: Adjuntar a la release (Windows)
+        if: runner.os == 'Windows' && github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/FinApp-windows-x86_64.zip --clobber

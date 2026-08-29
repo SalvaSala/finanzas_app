@@ -91,6 +91,7 @@ npm run gen:api                          # regenerar tipos TS desde OpenAPI
 **Empaquetado** (desde la raíz):
 ```bash
 bash packaging/build_linux.sh          # Linux: frontend + PyInstaller
+bash packaging/build_appimage.sh       # Linux: AppImage de un fichero (requiere el anterior)
 powershell -File packaging/build_windows.ps1   # Windows
 
 # En Linux hace falta una vez, para que la ventana pueda abrirse:
@@ -147,7 +148,10 @@ para no refactorizar después (detalle en `packaging/README.md`):
 - En Linux, la ventana necesita **PyGObject** (grupo `packaging`) más las librerías
   de sistema de GTK/WebKit. Sin ellas el binario arranca pero **la ventana no abre**:
   comprobarlo siempre, no basta con que el servidor responda.
-- La CI (`.github/workflows/build.yml`) construye los instalables en Windows y Linux al publicar una release.
+- La CI (`.github/workflows/build.yml`) construye los instalables al publicar una
+  release: un `FinApp-x86_64.AppImage` en Linux y un `FinApp-windows-x86_64.zip` en
+  Windows. Los sube como artefactos del run (que caducan) **y** los adjunta a la
+  release (permanentes), que es de donde los descarga el usuario final.
 - La CI (`.github/workflows/checks.yml`) ejecuta en cada push y PR a `main`: lint,
   formato, tipos y tests de backend y frontend, y **comprueba que los tipos TS del
   frontend siguen en sincronía con el esquema OpenAPI**. Si ese job falla, arranca el

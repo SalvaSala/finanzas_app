@@ -13,6 +13,7 @@ instalable cuando se quiere publicar una versión.
 | `finapp.spec` | Receta de PyInstaller: qué incluir en el paquete (estáticos del frontend, dependencias). |
 | `build_linux.sh` | Construye el ejecutable en Linux. |
 | `build_windows.ps1` | Construye el ejecutable en Windows. |
+| `build_appimage.sh` | Empaqueta el resultado de `build_linux.sh` en un AppImage de un solo fichero. |
 
 ## Requisitos previos
 
@@ -73,6 +74,48 @@ solo la 4.1 el binario salía sin WebKit y la ventana no abría.
 > **PyInstaller no permite compilación cruzada:** el `.exe` se genera en Windows
 > y el binario de Linux en Linux. Para no necesitar ambas máquinas, usar la CI de
 > GitHub Actions (`.github/workflows/build.yml`).
+
+### Del directorio al fichero único (AppImage, solo Linux)
+
+Lo que deja PyInstaller son **dos piezas inseparables**: el ejecutable `FinApp` y
+una carpeta `_internal/` de unos 200 MB. Si se mueve una sin la otra, no arranca.
+`build_appimage.sh` las mete en un **AppImage**: un único fichero de ~78 MB que se
+ejecuta con doble clic, sin instalar nada ni descomprimir.
+
+```bash
+bash packaging/build_linux.sh      # 1º: genera dist/FinApp/
+bash packaging/build_appimage.sh   # 2º: genera dist/FinApp-x86_64.AppImage
+```
+
+El orden importa: el segundo script empaqueta lo que encuentre en `dist/FinApp`.
+
+Un AppImage **hereda el glibc del binario que lleva dentro**; no arregla la
+compatibilidad, la empaqueta tal cual. Por eso, para publicar, el binario debe venir
+de la CI (Ubuntu 22.04) y no de la máquina de desarrollo.
+
+> `appimagetool` es a su vez un AppImage y necesita **libfuse2** para automontarse.
+> Donde no está (los runners de GitHub, contenedores), el script exporta
+> `APPIMAGE_EXTRACT_AND_RUN=1` para que se extraiga en un temporal en lugar de
+> montarse. Se puede forzar a mano para reproducir en local lo que hace la CI.
+
+### Qué publica la CI
+
+`build.yml` produce **un solo fichero descargable por sistema**:
+
+| Sistema | Fichero | Cómo se usa |
+|---|---|---|
+| Linux | `FinApp-x86_64.AppImage` | `chmod +x` y ejecutar; o doble clic. |
+| Windows | `FinApp-windows-x86_64.zip` | Descomprimir y ejecutar `FinApp\FinApp.exe`. |
+
+Ambos se suben **dos veces**, y la diferencia importa:
+
+- Como **artefacto del run** (siempre, también en lanzamientos manuales): sirve para
+  probar antes de publicar. Vive en la pestaña Actions y **caduca a los 90 días**.
+- Como **adjunto de la release** (solo cuando el disparador es una release
+  publicada): es lo que ve quien entra a descargar la app, y es permanente.
+
+Antes el workflow solo hacía lo primero, así que la página de la release salía sin
+ficheros: la app estaba construida pero no había forma de descargarla.
 
 ### Sobre qué versión de Linux construir
 
