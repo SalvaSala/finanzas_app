@@ -29,9 +29,17 @@ if not FRONTEND_DIST.exists():
     )
 
 ALEMBIC_DIR = ROOT / "backend" / "alembic"
+# Las fuentes DejaVu las carga fpdf2 por ruta de fichero al generar el informe PDF
+# (app/services/report.py). Sin incluirlas, el binario levanta pero /api/reports/pdf
+# falla con "TTF Font file not found".
+FONTS_DIR = ROOT / "backend" / "app" / "resources" / "fonts"
+if not FONTS_DIR.is_dir():
+    raise SystemExit(f"No existen las fuentes del informe PDF en {FONTS_DIR}")
+
 datas = [
     (str(FRONTEND_DIST), "frontend/dist"),
     (str(ALEMBIC_DIR), "alembic"),
+    (str(FONTS_DIR), "app/resources/fonts"),
 ]
 
 runtime_hooks = []
