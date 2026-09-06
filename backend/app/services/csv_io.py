@@ -14,14 +14,18 @@ from app.models import Category, Transaction
 from app.models.enums import TransactionType
 from app.repositories import account as account_repo
 from app.repositories import category as category_repo
+from app.repositories import transaction as transaction_repo
 from app.schemas.csv import (
     ColumnMapping,
     CsvImportMappedResult,
+    CsvImportPreview,
     CsvPreviewResult,
+    ImportPreviewRow,
     SuggestedMapping,
 )
 from app.schemas.transaction import TransactionCreate
-from app.services.transaction import create_transaction
+from app.services import transaction as transaction_service
+from app.services.exceptions import NotFoundError
 
 # ── Column names in the app-native CSV (Spanish, user-facing) ─────────────────
 
@@ -195,7 +199,7 @@ def import_csv(session: Session, content: str) -> ImportResult:
                 category_id=category_id,
                 subcategory_id=subcategory_id,
             )
-            create_transaction(session, data)
+            transaction_service.create_transaction(session, data)
             result.imported += 1
 
         except Exception as exc:
@@ -217,6 +221,8 @@ _SAMPLE_ROWS = 50
 _MATCH_RATIO = 0.8
 # Share of rows a column must have filled in before it is worth judging.
 _FILL_RATIO = 0.5
+# How many parsed rows the dry run sends back for the user to eyeball.
+_PREVIEW_ROWS = 50
 
 # Header names we know, best candidate first. Matching is by substring on the
 # lowercased header, so "IMPORTE EUR" and "Importe (€)" both match "importe".
@@ -306,6 +312,16 @@ class _CsvLayout:
 
 
 @dataclass
+class _ParsedRow:
+    """One CSV data row after parsing: a payload, or the reason it cannot load."""
+
+    line: int
+    data: TransactionCreate | None = None
+    error: str | None = None
+    duplicate: bool = False
+
+
+@dataclass
 class _ColumnStats:
     """What the values of one column look like."""
 
@@ -334,6 +350,25 @@ def detect_csv(file_bytes: bytes, has_header: bool | None = None) -> CsvPreviewR
 # ── Mapped import (for external CSVs with custom column mapping) ───────────────
 
 
+def preview_import_mapped(
+    session: Session,
+    file_bytes: bytes,
+    account_id: int,
+    mapping: ColumnMapping,
+) -> CsvImportPreview:
+    """Dry run: report what the import would do without writing anything."""
+    parsed = _prepare(session, file_bytes, account_id, mapping)
+    by_id = {c.id: c for c in category_repo.list_all(session)}
+
+    return CsvImportPreview(
+        rows=[_preview_row(session, row, by_id) for row in parsed[:_PREVIEW_ROWS]],
+        total=len(parsed),
+        ready=sum(1 for r in parsed if r.data is not None and not r.duplicate),
+        duplicates=sum(1 for r in parsed if r.duplicate),
+        errors=sum(1 for r in parsed if r.error is not None),
+    )
+
+
 def import_csv_mapped(
     session: Session,
     file_bytes: bytes,
@@ -341,75 +376,49 @@ def import_csv_mapped(
     mapping: ColumnMapping,
 ) -> CsvImportMappedResult:
     """Import an external CSV using the provided column mapping."""
-    account = account_repo.get(session, account_id)
-    if account is None:
-        return CsvImportMappedResult(
-            imported=0, skipped=0, uncategorized=0, errors=["Cuenta no encontrada."]
-        )
+    result = CsvImportMappedResult(imported=0, skipped=0, uncategorized=0, duplicates=0, errors=[])
 
-    layout = _analyze(file_bytes, mapping.has_header)
+    try:
+        parsed = _prepare(session, file_bytes, account_id, mapping)
+    except NotFoundError as exc:
+        result.errors.append(str(exc))
+        return result
 
-    all_categories = category_repo.list_all(session)
-    cats_by_name: dict[str, Category] = {c.name.lower(): c for c in all_categories}
-
-    result = CsvImportMappedResult(imported=0, skipped=0, uncategorized=0, errors=[])
-    if not layout.rows:
+    if not parsed:
         result.errors.append("El archivo CSV está vacío o no tiene datos.")
         return result
 
-    for line_num, cells in layout.rows:
-        row = dict(zip(layout.headers, cells, strict=False))
-
+    # Validate row by row so a single bad line is reported by number instead of
+    # sinking the whole file, then write what survived in one commit.
+    pending: list[Transaction] = []
+    for row in parsed:
+        if row.error is not None:
+            result.skipped += 1
+            result.errors.append(f"Fila {row.line}: {row.error}")
+            continue
+        if row.duplicate:
+            # Counted either way: the user is told how many repeats the file
+            # carried even when they chose to import them anyway.
+            result.duplicates += 1
+            if mapping.skip_duplicates:
+                continue
+        assert row.data is not None
         try:
-            date_val = row.get(mapping.date_col, "")
-            if not date_val:
-                raise ValueError("La columna de fecha está vacía.")
-            date = _parse_date(date_val, mapping.date_format)
-
-            amount_val = row.get(mapping.amount_col, "")
-            if not amount_val:
-                raise ValueError("La columna de importe está vacía.")
-            amount, tx_type = _parse_amount(
-                amount_val, mapping.decimal_sep, mapping.sign_convention
-            )
-            if mapping.type_col:
-                tx_type = _resolve_type(row.get(mapping.type_col, ""), tx_type)
-
-            concept = row.get(mapping.concept_col, "").strip() or "(Sin concepto)"
-
-            description: str | None = None
-            if mapping.description_col:
-                description = row.get(mapping.description_col) or None
-
-            category_id: int | None = None
-            subcategory_id: int | None = None
-            if mapping.category_col:
-                cat_raw = row.get(mapping.category_col, "").strip()
-                if cat_raw:
-                    category_id, subcategory_id = _resolve_category(
-                        cat_raw, cats_by_name, all_categories
-                    )
-
-            data = TransactionCreate(
-                date=date,
-                type=tx_type,
-                concept=concept,
-                description=description,
-                amount=amount,
-                account_id=account.id,
-                category_id=category_id,
-                subcategory_id=subcategory_id,
-            )
-            # Rules may still categorize it, so ask the saved row, not the input.
-            transaction = create_transaction(session, data)
-            result.imported += 1
-            if transaction.category_id is None:
-                result.uncategorized += 1
-
+            pending.append(transaction_service.build_transaction(session, row.data))
         except Exception as exc:
             result.skipped += 1
-            result.errors.append(f"Fila {line_num}: {exc}")
+            result.errors.append(f"Fila {row.line}: {exc}")
 
+    try:
+        created = transaction_repo.create_many(session, pending)
+    except Exception as exc:
+        session.rollback()
+        result.errors.append(f"No se pudo guardar la importación: {exc}")
+        return result
+
+    result.imported = len(created)
+    # Rules may have categorized rows on the way in, so ask the saved movements.
+    result.uncategorized = sum(1 for tx in created if tx.category_id is None)
     return result
 
 
@@ -704,6 +713,155 @@ def _resolve_type(raw: str, fallback: TransactionType) -> TransactionType:
             "con mapeo de columnas."
         )
     return declared
+
+
+def _prepare(
+    session: Session,
+    file_bytes: bytes,
+    account_id: int,
+    mapping: ColumnMapping,
+) -> list[_ParsedRow]:
+    """Parse every data row and flag the ones already in the database."""
+    account = account_repo.get(session, account_id)
+    if account is None:
+        raise NotFoundError("Cuenta no encontrada.")
+
+    layout = _analyze(file_bytes, mapping.has_header)
+    all_categories = category_repo.list_all(session)
+    cats_by_name: dict[str, Category] = {c.name.lower(): c for c in all_categories}
+
+    parsed = [
+        _parse_row(
+            dict(zip(layout.headers, cells, strict=False)),
+            line,
+            account_id,
+            mapping,
+            cats_by_name,
+            all_categories,
+        )
+        for line, cells in layout.rows
+    ]
+    _mark_duplicates(session, parsed)
+    return parsed
+
+
+def _parse_row(
+    row: dict[str, str],
+    line: int,
+    account_id: int,
+    mapping: ColumnMapping,
+    cats_by_name: dict[str, Category],
+    all_categories: list[Category],
+) -> _ParsedRow:
+    """Turn one CSV row into a payload, or record why it cannot be imported."""
+    try:
+        date_val = row.get(mapping.date_col, "")
+        if not date_val:
+            raise ValueError("La columna de fecha está vacía.")
+        date = _parse_date(date_val, mapping.date_format)
+
+        amount_val = row.get(mapping.amount_col, "")
+        if not amount_val:
+            raise ValueError("La columna de importe está vacía.")
+        amount, tx_type = _parse_amount(amount_val, mapping.decimal_sep, mapping.sign_convention)
+        if mapping.type_col:
+            tx_type = _resolve_type(row.get(mapping.type_col, ""), tx_type)
+
+        description: str | None = None
+        if mapping.description_col:
+            description = row.get(mapping.description_col) or None
+
+        category_id: int | None = None
+        subcategory_id: int | None = None
+        if mapping.category_col:
+            cat_raw = row.get(mapping.category_col, "").strip()
+            if cat_raw:
+                category_id, subcategory_id = _resolve_category(
+                    cat_raw, cats_by_name, all_categories
+                )
+
+        return _ParsedRow(
+            line=line,
+            data=TransactionCreate(
+                date=date,
+                type=tx_type,
+                concept=row.get(mapping.concept_col, "").strip() or "(Sin concepto)",
+                description=description,
+                amount=amount,
+                account_id=account_id,
+                category_id=category_id,
+                subcategory_id=subcategory_id,
+            ),
+        )
+    except Exception as exc:
+        return _ParsedRow(line=line, error=str(exc))
+
+
+def _signature(
+    account_id: int, date: dt.date, tx_type: TransactionType, amount: Decimal, concept: str
+) -> tuple[int, dt.date, TransactionType, Decimal, str]:
+    """Identity of a movement, for spotting one that is already stored.
+
+    The date must match exactly: a settled movement does not move, and a
+    tolerance window would swallow genuine repeats such as a subscription
+    charged on consecutive days.
+    """
+    return (account_id, date, tx_type, amount, " ".join(concept.lower().split()))
+
+
+def _mark_duplicates(session: Session, parsed: list[_ParsedRow]) -> None:
+    """Flag rows whose movement the database already holds.
+
+    Occurrences are counted rather than matched one by one, so a statement that
+    genuinely repeats a movement — two identical purchases the same day — keeps
+    the second one when only the first is stored.
+    """
+    dates = [row.data.date for row in parsed if row.data is not None]
+    if not dates:
+        return
+
+    stored = Counter(
+        _signature(tx.account_id, tx.date, tx.type, tx.amount, tx.concept)
+        for tx in transaction_repo.list_in_range(session, min(dates), max(dates))
+    )
+    for row in parsed:
+        if row.data is None:
+            continue
+        key = _signature(
+            row.data.account_id, row.data.date, row.data.type, row.data.amount, row.data.concept
+        )
+        if stored[key] > 0:
+            stored[key] -= 1
+            row.duplicate = True
+
+
+def _category_label(
+    category_id: int | None, subcategory_id: int | None, by_id: dict[int | None, Category]
+) -> str | None:
+    parent = by_id.get(category_id) if category_id is not None else None
+    if parent is None:
+        return None
+    child = by_id.get(subcategory_id) if subcategory_id is not None else None
+    return f"{parent.name} › {child.name}" if child is not None else parent.name
+
+
+def _preview_row(
+    session: Session, row: _ParsedRow, by_id: dict[int | None, Category]
+) -> ImportPreviewRow:
+    if row.data is None:
+        return ImportPreviewRow(line=row.line, error=row.error)
+
+    # Ask the same resolver the import uses, so the rules show up here too.
+    category_id, subcategory_id = transaction_service.resolve_category(session, row.data)
+    return ImportPreviewRow(
+        line=row.line,
+        date=row.data.date.isoformat(),
+        type=row.data.type,
+        concept=row.data.concept,
+        amount=str(row.data.amount),
+        category=_category_label(category_id, subcategory_id, by_id),
+        duplicate=row.duplicate,
+    )
 
 
 def _resolve_category(

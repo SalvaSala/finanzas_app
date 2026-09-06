@@ -143,3 +143,57 @@ def test_csv_import_mapped_endpoint(client: TestClient, session: Session) -> Non
     movements = client.get("/api/transactions").json()
     assert sum(1 for m in movements if m["type"] == "expense") == 4
     assert sum(1 for m in movements if m["type"] == "income") == 1
+
+
+def _sabadell_mapping(**overrides: object) -> str:
+    mapping: dict[str, object] = {
+        "date_col": "Columna 1",
+        "concept_col": "Columna 2",
+        "amount_col": "Columna 4",
+        "has_header": False,
+    }
+    mapping.update(overrides)
+    return json.dumps(mapping)
+
+
+def test_csv_import_preview_endpoint_writes_nothing(client: TestClient, session: Session) -> None:
+    account, _ = _seed(session)
+
+    response = client.post(
+        "/api/transactions/csv-import-preview",
+        files={"file": ("extracto.txt", SABADELL_TXT, "text/plain")},
+        data={"account_id": str(account.id), "mapping": _sabadell_mapping()},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["total"], body["ready"], body["duplicates"], body["errors"]) == (5, 5, 0, 0)
+    assert body["rows"][0]["type"] == "expense"
+    assert client.get("/api/transactions").json() == []
+
+
+def test_csv_import_preview_endpoint_unknown_account(client: TestClient, session: Session) -> None:
+    _seed(session)
+
+    response = client.post(
+        "/api/transactions/csv-import-preview",
+        files={"file": ("extracto.txt", SABADELL_TXT, "text/plain")},
+        data={"account_id": "9999", "mapping": _sabadell_mapping()},
+    )
+
+    assert response.status_code == 404
+
+
+def test_csv_import_mapped_endpoint_skips_duplicates(client: TestClient, session: Session) -> None:
+    account, _ = _seed(session)
+    payload = {
+        "files": {"file": ("extracto.txt", SABADELL_TXT, "text/plain")},
+        "data": {"account_id": str(account.id), "mapping": _sabadell_mapping()},
+    }
+
+    client.post("/api/transactions/csv-import-mapped", **payload)  # type: ignore[arg-type]
+    second = client.post("/api/transactions/csv-import-mapped", **payload)  # type: ignore[arg-type]
+
+    assert second.json()["imported"] == 0
+    assert second.json()["duplicates"] == 5
+    assert len(client.get("/api/transactions").json()) == 5

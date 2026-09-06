@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Tag,
   Sparkles,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,9 +17,11 @@ import type {
   AccountRead,
   ColumnMapping,
   CsvImportMappedResult,
+  CsvImportPreview,
   CsvPreviewResult,
 } from "@/api/client";
 import { api } from "@/api/client";
+import { formatAmount, formatDate } from "@/lib/format";
 import { useAccounts } from "@/hooks/useAccounts";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +41,14 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Step = "upload" | "native" | "map" | "result";
+type Step = "upload" | "native" | "map" | "review" | "result";
+
+/** Lo que el paso de mapeo deja listo para que el de revisión pueda importar. */
+interface ImportPlan {
+  accountId: number;
+  mapping: ColumnMapping;
+  preview: CsvImportPreview;
+}
 
 const NONE = "__none__";
 
@@ -193,9 +203,9 @@ function StepNative({ file, onBack, onImport }: StepNativeProps) {
         qc.invalidateQueries({ queryKey: ["dashboard"] });
         qc.invalidateQueries({ queryKey: ["budgets"] });
       }
-      // El importador propio no lleva la cuenta de los que quedan sin categoría:
-      // el CSV trae las suyas y las que no existan se rechazan como error de fila.
-      onImport({ ...result, uncategorized: 0 });
+      // El importador propio no lleva ninguna de las dos cuentas: el CSV trae sus
+      // categorías y las que no existan se rechazan como error de fila.
+      onImport({ ...result, uncategorized: 0, duplicates: 0 });
     } catch (err) {
       toast.error((err as Error).message || "Error al importar el CSV");
     } finally {
@@ -237,11 +247,10 @@ interface Step2Props {
   accounts: AccountRead[];
   onBack: () => void;
   onPreviewChange: (preview: CsvPreviewResult) => void;
-  onImport: (result: CsvImportMappedResult) => void;
+  onPlan: (plan: ImportPlan) => void;
 }
 
-function StepMap({ file, preview, accounts, onBack, onPreviewChange, onImport }: Step2Props) {
-  const qc = useQueryClient();
+function StepMap({ file, preview, accounts, onBack, onPreviewChange, onPlan }: Step2Props) {
   const suggested = preview.suggested;
   const [accountId, setAccountId] = useState<string>(
     accounts.length === 1 ? String(accounts[0].id) : NONE
@@ -286,34 +295,28 @@ function StepMap({ file, preview, accounts, onBack, onPreviewChange, onImport }:
     mapping.concept_col &&
     mapping.amount_col;
 
-  async function handleImport() {
+  /** Pide al backend el simulacro: qué entraría, sin escribir nada todavía. */
+  async function handleReview() {
     if (!requiredFilled) return;
     setLoading(true);
+    const accountIdNum = Number(accountId);
+    const built: ColumnMapping = {
+      date_col: mapping.date_col!,
+      concept_col: mapping.concept_col!,
+      amount_col: mapping.amount_col!,
+      description_col: mapping.description_col ?? null,
+      category_col: mapping.category_col ?? null,
+      type_col: mapping.type_col ?? null,
+      date_format: mapping.date_format ?? "auto",
+      decimal_sep: mapping.decimal_sep ?? "auto",
+      sign_convention: mapping.sign_convention ?? "signed",
+      has_header: preview.has_header,
+    };
     try {
-      const result = await api.transactions.csvImportMapped(
-        file,
-        Number(accountId),
-        {
-          date_col: mapping.date_col!,
-          concept_col: mapping.concept_col!,
-          amount_col: mapping.amount_col!,
-          description_col: mapping.description_col ?? null,
-          category_col: mapping.category_col ?? null,
-          type_col: mapping.type_col ?? null,
-          date_format: mapping.date_format ?? "auto",
-          decimal_sep: mapping.decimal_sep ?? "auto",
-          sign_convention: mapping.sign_convention ?? "signed",
-          has_header: preview.has_header,
-        }
-      );
-      if (result.imported > 0) {
-        qc.invalidateQueries({ queryKey: ["transactions"] });
-        qc.invalidateQueries({ queryKey: ["dashboard"] });
-        qc.invalidateQueries({ queryKey: ["budgets"] });
-      }
-      onImport(result);
+      const plan = await api.transactions.csvImportPreview(file, accountIdNum, built);
+      onPlan({ accountId: accountIdNum, mapping: built, preview: plan });
     } catch (err) {
-      toast.error((err as Error).message || "Error al importar el CSV");
+      toast.error((err as Error).message || "No se pudo analizar el archivo");
     } finally {
       setLoading(false);
     }
@@ -461,22 +464,167 @@ function StepMap({ file, preview, accounts, onBack, onPreviewChange, onImport }:
           <ArrowLeft className="mr-1 h-3.5 w-3.5" />
           Volver
         </Button>
-        <Button onClick={handleImport} disabled={!requiredFilled || loading}>
-          {loading ? "Importando…" : "Importar"}
+        <Button onClick={handleReview} disabled={!requiredFilled || loading}>
+          {loading ? "Analizando…" : "Revisar →"}
         </Button>
       </div>
     </div>
   );
 }
 
-// ── Step 3 — Results ──────────────────────────────────────────────────────────
+// ── Step 3 — Review before writing ────────────────────────────────────────────
 
 interface Step3Props {
+  file: File;
+  plan: ImportPlan;
+  onBack: () => void;
+  onImport: (result: CsvImportMappedResult) => void;
+}
+
+function StepReview({ file, plan, onBack, onImport }: Step3Props) {
+  const qc = useQueryClient();
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const { rows, total, ready, duplicates, errors } = plan.preview;
+
+  const willImport = skipDuplicates ? ready : ready + duplicates;
+
+  async function handleImport() {
+    setLoading(true);
+    try {
+      const result = await api.transactions.csvImportMapped(file, plan.accountId, {
+        ...plan.mapping,
+        skip_duplicates: skipDuplicates,
+      });
+      if (result.imported > 0) {
+        qc.invalidateQueries({ queryKey: ["transactions"] });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+        qc.invalidateQueries({ queryKey: ["budgets"] });
+      }
+      onImport(result);
+    } catch (err) {
+      toast.error((err as Error).message || "Error al importar el CSV");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 text-xs">
+        <span className="rounded-md border bg-muted/30 px-2.5 py-1">
+          <strong>{total}</strong> fila{total !== 1 ? "s" : ""} en el archivo
+        </span>
+        <span className="rounded-md border border-income/30 bg-income/5 px-2.5 py-1 text-income">
+          <strong>{ready}</strong> nuevo{ready !== 1 ? "s" : ""}
+        </span>
+        {duplicates > 0 && (
+          <span className="rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-1 text-amber-600 dark:text-amber-500">
+            <strong>{duplicates}</strong> ya guardado{duplicates !== 1 ? "s" : ""}
+          </span>
+        )}
+        {errors > 0 && (
+          <span className="rounded-md border border-expense/30 bg-expense/5 px-2.5 py-1 text-expense">
+            <strong>{errors}</strong> con error
+          </span>
+        )}
+      </div>
+
+      <div className="max-h-72 overflow-auto rounded-md border">
+        <table className="min-w-full text-xs">
+          <thead className="sticky top-0 bg-muted/60 backdrop-blur">
+            <tr>
+              <th className="px-2 py-1.5 text-left font-medium">Fila</th>
+              <th className="px-2 py-1.5 text-left font-medium">Fecha</th>
+              <th className="px-2 py-1.5 text-left font-medium">Concepto</th>
+              <th className="px-2 py-1.5 text-left font-medium">Categoría</th>
+              <th className="px-2 py-1.5 text-right font-medium">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.line}
+                className={`border-t ${row.duplicate && skipDuplicates ? "opacity-45" : ""}`}
+              >
+                <td className="px-2 py-1.5 text-muted-foreground tabular-nums">{row.line}</td>
+                {row.error ? (
+                  <td colSpan={4} className="px-2 py-1.5 text-expense">
+                    <span className="inline-flex items-center gap-1.5">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      {row.error}
+                    </span>
+                  </td>
+                ) : (
+                  <>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      {row.date ? formatDate(row.date) : "—"}
+                    </td>
+                    <td className="max-w-[220px] truncate px-2 py-1.5">
+                      {row.duplicate && (
+                        <Copy className="mr-1 inline h-3 w-3 shrink-0 text-amber-500" />
+                      )}
+                      {row.concept}
+                    </td>
+                    <td className="px-2 py-1.5 text-muted-foreground">
+                      {row.category ?? <span className="text-muted-foreground/60">Sin categoría</span>}
+                    </td>
+                    <td
+                      className={`px-2 py-1.5 text-right whitespace-nowrap tabular-nums ${
+                        row.type === "expense" ? "text-expense" : "text-income"
+                      }`}
+                    >
+                      {row.amount && row.type ? formatAmount(row.amount, row.type) : "—"}
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {rows.length < total && (
+        <p className="text-xs text-muted-foreground">
+          Se muestran las primeras {rows.length} de {total} filas.
+        </p>
+      )}
+
+      {duplicates > 0 && (
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 accent-primary"
+            checked={skipDuplicates}
+            onChange={(e) => setSkipDuplicates(e.target.checked)}
+          />
+          Omitir {duplicates} movimiento{duplicates !== 1 ? "s" : ""} que ya {duplicates !== 1 ? "están" : "está"} en la app
+        </label>
+      )}
+
+      <div className="flex justify-between gap-2 pt-1">
+        <Button variant="outline" size="sm" onClick={onBack}>
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+          Volver
+        </Button>
+        <Button onClick={handleImport} disabled={loading || willImport === 0}>
+          {loading
+            ? "Importando…"
+            : `Importar ${willImport} movimiento${willImport !== 1 ? "s" : ""}`}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 4 — Results ──────────────────────────────────────────────────────────
+
+interface Step4Props {
   result: CsvImportMappedResult;
   onClose: () => void;
 }
 
-function StepResult({ result, onClose }: Step3Props) {
+function StepResult({ result, onClose }: Step4Props) {
   const navigate = useNavigate();
 
   function goToUncategorized() {
@@ -492,9 +640,14 @@ function StepResult({ result, onClose }: Step3Props) {
           <p className="text-sm font-medium">
             {result.imported} movimiento{result.imported !== 1 ? "s" : ""} importado{result.imported !== 1 ? "s" : ""}
           </p>
+          {result.duplicates > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {result.duplicates} ya {result.duplicates !== 1 ? "estaban" : "estaba"} en la app
+            </p>
+          )}
           {result.skipped > 0 && (
             <p className="text-xs text-muted-foreground">
-              {result.skipped} fila{result.skipped !== 1 ? "s" : ""} omitida{result.skipped !== 1 ? "s" : ""}
+              {result.skipped} fila{result.skipped !== 1 ? "s" : ""} omitida{result.skipped !== 1 ? "s" : ""} por error
             </p>
           )}
         </div>
@@ -545,19 +698,22 @@ export function CsvImportDialog({ open, onOpenChange }: Props) {
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<CsvPreviewResult | null>(null);
+  const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [result, setResult] = useState<CsvImportMappedResult | null>(null);
 
   const STEP_LABELS: Record<Step, string> = {
     upload: "1. Subir archivo",
     native: "2. Confirmar",
     map:    "2. Mapear columnas",
-    result: "3. Resultado",
+    review: "3. Revisar antes de importar",
+    result: "4. Resultado",
   };
 
   function handleClose() {
     setStep("upload");
     setFile(null);
     setPreview(null);
+    setPlan(null);
     setResult(null);
     onOpenChange(false);
   }
@@ -566,6 +722,11 @@ export function CsvImportDialog({ open, onOpenChange }: Props) {
     setFile(f);
     setPreview(p);
     setStep(p.is_native ? "native" : "map");
+  }
+
+  function handlePlan(p: ImportPlan) {
+    setPlan(p);
+    setStep("review");
   }
 
   function handleImport(r: CsvImportMappedResult) {
@@ -608,6 +769,15 @@ export function CsvImportDialog({ open, onOpenChange }: Props) {
             accounts={accounts}
             onBack={() => setStep("upload")}
             onPreviewChange={setPreview}
+            onPlan={handlePlan}
+          />
+        )}
+
+        {step === "review" && plan && file && (
+          <StepReview
+            file={file}
+            plan={plan}
+            onBack={() => setStep("map")}
             onImport={handleImport}
           />
         )}

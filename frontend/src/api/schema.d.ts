@@ -152,6 +152,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/transactions/csv-import-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Csv Import Preview
+         * @description Dry run of a mapped import: what would be stored, without storing it.
+         */
+        post: operations["csv_import_preview_api_transactions_csv_import_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transactions/csv-import-mapped": {
         parameters: {
             query?: never;
@@ -744,6 +764,15 @@ export interface components {
             /** Mapping */
             mapping: string;
         };
+        /** Body_csv_import_preview_api_transactions_csv_import_preview_post */
+        Body_csv_import_preview_api_transactions_csv_import_preview_post: {
+            /** File */
+            file: string;
+            /** Account Id */
+            account_id: number;
+            /** Mapping */
+            mapping: string;
+        };
         /** Body_csv_preview_api_transactions_csv_preview_post */
         Body_csv_preview_api_transactions_csv_preview_post: {
             /** File */
@@ -961,6 +990,27 @@ export interface components {
             uncategorized: number;
             /** Errors */
             errors: string[];
+            /**
+             * Duplicates
+             * @default 0
+             */
+            duplicates: number;
+        };
+        /**
+         * CsvImportPreview
+         * @description Dry run of an import: what would happen, without touching the database.
+         */
+        CsvImportPreview: {
+            /** Rows */
+            rows: components["schemas"]["ImportPreviewRow"][];
+            /** Total */
+            total: number;
+            /** Ready */
+            ready: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Errors */
+            errors: number;
         };
         /** CsvPreviewResult */
         CsvPreviewResult: {
@@ -1024,6 +1074,33 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * ImportPreviewRow
+         * @description One CSV line as it would be stored, before anything is written.
+         */
+        ImportPreviewRow: {
+            /** Line */
+            line: number;
+            /** Date */
+            date?: string | null;
+            type?: components["schemas"]["TransactionType"] | null;
+            /**
+             * Concept
+             * @default
+             */
+            concept: string;
+            /** Amount */
+            amount?: string | null;
+            /** Category */
+            category?: string | null;
+            /**
+             * Duplicate
+             * @default false
+             */
+            duplicate: boolean;
+            /** Error */
+            error?: string | null;
         };
         /** ImportResult */
         ImportResult: {
@@ -1783,6 +1860,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CsvPreviewResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    csv_import_preview_api_transactions_csv_import_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_csv_import_preview_api_transactions_csv_import_preview_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsvImportPreview"];
                 };
             };
             /** @description Validation Error */

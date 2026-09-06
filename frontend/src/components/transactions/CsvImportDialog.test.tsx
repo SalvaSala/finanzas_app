@@ -1,4 +1,4 @@
-import type { AccountRead, CsvPreviewResult } from "@/api/client";
+import type { AccountRead, CsvImportPreview, CsvPreviewResult } from "@/api/client";
 
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -42,6 +42,36 @@ const previewSinCabecera: CsvPreviewResult = {
   },
 };
 
+/** Simulacro por defecto: dos filas limpias, ningún duplicado. */
+const plan: CsvImportPreview = {
+  total: 2,
+  ready: 2,
+  duplicates: 0,
+  errors: 0,
+  rows: [
+    {
+      line: 2,
+      date: "2026-06-01",
+      type: "expense",
+      concept: "Mercadona",
+      amount: "42.50",
+      category: "Alimentación › Supermercado",
+      duplicate: false,
+      error: null,
+    },
+    {
+      line: 3,
+      date: "2026-06-02",
+      type: "income",
+      concept: "Nómina",
+      amount: "1500.00",
+      category: null,
+      duplicate: false,
+      error: null,
+    },
+  ],
+};
+
 function csvFile(name = "movimientos.csv"): File {
   return new File(["Fecha;Concepto;Importe\n01/06/2026;Mercadona;-42,50\n"], name, {
     type: "text/csv",
@@ -81,25 +111,45 @@ async function goToMapping(user: ReturnType<typeof userEvent.setup>) {
   await waitFor(() => expect(screen.getByText("Mapear columnas")).toBeInTheDocument());
 }
 
+/** Mapea las tres columnas obligatorias y pasa al paso de revisión. */
+async function goToReview(user: ReturnType<typeof userEvent.setup>) {
+  await goToMapping(user);
+  const combos = screen.getAllByRole("combobox");
+  for (const [index, header] of [
+    [0, "Fecha"],
+    [1, "Concepto"],
+    [2, "Importe"],
+  ] as const) {
+    await user.click(combos[index]);
+    const listbox = await screen.findByRole("listbox");
+    await user.click(within(listbox).getByRole("option", { name: header }));
+  }
+  await user.click(screen.getByRole("button", { name: /Revisar/ }));
+  await waitFor(() => expect(screen.getByText(/fila.? en el archivo/)).toBeInTheDocument());
+}
+
 let previewSpy: MockInstance<typeof api.transactions.csvPreview>;
 let importSpy: MockInstance<typeof api.transactions.csvImportMapped>;
 let nativeImportSpy: MockInstance<typeof api.transactions.importCsv>;
+let planSpy: MockInstance<typeof api.transactions.csvImportPreview>;
 
 beforeEach(() => {
   mockFetch({ "/api/accounts": accounts });
   previewSpy = vi.spyOn(api.transactions, "csvPreview").mockResolvedValue(preview);
   importSpy = vi
     .spyOn(api.transactions, "csvImportMapped")
-    .mockResolvedValue({ imported: 2, skipped: 0, uncategorized: 0, errors: [] });
+    .mockResolvedValue({ imported: 2, skipped: 0, uncategorized: 0, duplicates: 0, errors: [] });
   nativeImportSpy = vi
     .spyOn(api.transactions, "importCsv")
     .mockResolvedValue({ imported: 3, skipped: 0, errors: [] });
+  planSpy = vi.spyOn(api.transactions, "csvImportPreview").mockResolvedValue(plan);
 });
 
 afterEach(() => {
   previewSpy.mockRestore();
   importSpy.mockRestore();
   nativeImportSpy.mockRestore();
+  planSpy.mockRestore();
 });
 
 describe("CsvImportDialog — paso 1: subida", () => {
@@ -148,11 +198,11 @@ describe("CsvImportDialog — paso 2: mapeo", () => {
     expect(screen.getByRole("columnheader", { name: "Importe" })).toBeInTheDocument();
   });
 
-  it("no deja importar hasta mapear las columnas obligatorias", async () => {
+  it("no deja avanzar hasta mapear las columnas obligatorias", async () => {
     const { user } = setup();
     await goToMapping(user);
 
-    expect(screen.getByRole("button", { name: /Importar/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Revisar/ })).toBeDisabled();
   });
 
   it("permite volver al paso anterior", async () => {
@@ -168,28 +218,12 @@ describe("CsvImportDialog — paso 2: mapeo", () => {
     );
   });
 
-  it("importa con el mapeo elegido y los valores por defecto", async () => {
+  it("pide el simulacro con el mapeo elegido, sin escribir nada", async () => {
     const { user } = setup();
-    await goToMapping(user);
+    await goToReview(user);
 
-    // Los tres selectores obligatorios, en el orden en que se pintan.
-    const combos = screen.getAllByRole("combobox");
-    for (const [index, header] of [
-      [0, "Fecha"],
-      [1, "Concepto"],
-      [2, "Importe"],
-    ] as const) {
-      await user.click(combos[index]);
-      const listbox = await screen.findByRole("listbox");
-      await user.click(within(listbox).getByRole("option", { name: header }));
-    }
-
-    const importButton = screen.getByRole("button", { name: /Importar/ });
-    await waitFor(() => expect(importButton).toBeEnabled());
-    await user.click(importButton);
-
-    await waitFor(() => expect(importSpy).toHaveBeenCalled());
-    const [, accountId, mapping] = importSpy.mock.calls[0];
+    expect(importSpy).not.toHaveBeenCalled();
+    const [, accountId, mapping] = planSpy.mock.calls[0];
     expect(accountId).toBe(1);
     expect(mapping).toMatchObject({
       date_col: "Fecha",
@@ -204,19 +238,90 @@ describe("CsvImportDialog — paso 2: mapeo", () => {
   });
 });
 
-describe("CsvImportDialog — paso 3: resultado", () => {
+describe("CsvImportDialog — paso 3: revisión", () => {
+  it("resume el simulacro y pinta las filas ya parseadas", async () => {
+    const { user } = setup();
+    await goToReview(user);
+
+    expect(screen.getByText(byWholeText("2 filas en el archivo"))).toBeInTheDocument();
+    expect(screen.getByText(byWholeText("2 nuevos"))).toBeInTheDocument();
+    expect(screen.getByText("01/06/2026")).toBeInTheDocument();
+    expect(screen.getByText("Alimentación › Supermercado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Importar 2 movimientos" })).toBeEnabled();
+  });
+
+  it("avisa de los que ya están guardados y los omite por defecto", async () => {
+    planSpy.mockResolvedValue({
+      ...plan,
+      ready: 1,
+      duplicates: 1,
+      rows: [plan.rows[0], { ...plan.rows[1], duplicate: true }],
+    });
+    const { user } = setup();
+    await goToReview(user);
+
+    expect(screen.getByText(byWholeText("1 ya guardado"))).toBeInTheDocument();
+    const omitir = screen.getByRole("checkbox");
+    expect(omitir).toBeChecked();
+    expect(screen.getByRole("button", { name: "Importar 1 movimiento" })).toBeInTheDocument();
+
+    await user.click(omitir);
+
+    expect(screen.getByRole("button", { name: "Importar 2 movimientos" })).toBeInTheDocument();
+  });
+
+  it("envía la decisión sobre los duplicados al importar", async () => {
+    planSpy.mockResolvedValue({ ...plan, ready: 1, duplicates: 1 });
+    const { user } = setup();
+    await goToReview(user);
+
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: /Importar/ }));
+
+    await waitFor(() => expect(importSpy).toHaveBeenCalled());
+    expect(importSpy.mock.calls[0][2]).toMatchObject({ skip_duplicates: false });
+  });
+
+  it("muestra el motivo de las filas que fallarán", async () => {
+    planSpy.mockResolvedValue({
+      total: 1,
+      ready: 0,
+      duplicates: 0,
+      errors: 1,
+      rows: [
+        {
+          line: 4,
+          date: null,
+          type: null,
+          concept: "",
+          amount: null,
+          category: null,
+          duplicate: false,
+          error: "Fecha inválida: 'ayer'.",
+        },
+      ],
+    });
+    const { user } = setup();
+    await goToReview(user);
+
+    expect(screen.getByText("Fecha inválida: 'ayer'.")).toBeInTheDocument();
+    expect(screen.getByText(byWholeText("1 con error"))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Importar 0/ })).toBeDisabled();
+  });
+
+  it("permite volver al mapeo", async () => {
+    const { user } = setup();
+    await goToReview(user);
+
+    await user.click(screen.getByRole("button", { name: /Volver/ }));
+
+    await waitFor(() => expect(screen.getByText("Mapear columnas")).toBeInTheDocument());
+  });
+});
+
+describe("CsvImportDialog — paso 4: resultado", () => {
   async function importAndReachResult(user: ReturnType<typeof userEvent.setup>) {
-    await goToMapping(user);
-    const combos = screen.getAllByRole("combobox");
-    for (const [index, header] of [
-      [0, "Fecha"],
-      [1, "Concepto"],
-      [2, "Importe"],
-    ] as const) {
-      await user.click(combos[index]);
-      const listbox = await screen.findByRole("listbox");
-      await user.click(within(listbox).getByRole("option", { name: header }));
-    }
+    await goToReview(user);
     await user.click(screen.getByRole("button", { name: /Importar/ }));
   }
 
@@ -228,23 +333,33 @@ describe("CsvImportDialog — paso 3: resultado", () => {
   });
 
   it("usa el singular con un solo movimiento", async () => {
-    importSpy.mockResolvedValue({ imported: 1, skipped: 0, uncategorized: 0, errors: [] });
+    importSpy.mockResolvedValue({ imported: 1, skipped: 0, uncategorized: 0, duplicates: 0, errors: [] });
     const { user } = setup();
     await importAndReachResult(user);
 
     expect(await screen.findByText(byWholeText("1 movimiento importado"))).toBeInTheDocument();
   });
 
-  it("informa de las filas omitidas", async () => {
-    importSpy.mockResolvedValue({ imported: 1, skipped: 3, uncategorized: 0, errors: [] });
+  it("informa de las filas omitidas por error", async () => {
+    importSpy.mockResolvedValue({ imported: 1, skipped: 3, uncategorized: 0, duplicates: 0, errors: [] });
     const { user } = setup();
     await importAndReachResult(user);
 
-    expect(await screen.findByText(byWholeText("3 filas omitidas"))).toBeInTheDocument();
+    expect(
+      await screen.findByText(byWholeText("3 filas omitidas por error")),
+    ).toBeInTheDocument();
+  });
+
+  it("informa de los que ya estaban guardados", async () => {
+    importSpy.mockResolvedValue({ imported: 1, skipped: 0, uncategorized: 0, duplicates: 4, errors: [] });
+    const { user } = setup();
+    await importAndReachResult(user);
+
+    expect(await screen.findByText(byWholeText("4 ya estaban en la app"))).toBeInTheDocument();
   });
 
   it("ofrece revisar los movimientos sin categoría", async () => {
-    importSpy.mockResolvedValue({ imported: 5, skipped: 0, uncategorized: 2, errors: [] });
+    importSpy.mockResolvedValue({ imported: 5, skipped: 0, uncategorized: 2, duplicates: 0, errors: [] });
     const { user } = setup();
     await importAndReachResult(user);
 
@@ -258,6 +373,7 @@ describe("CsvImportDialog — paso 3: resultado", () => {
       imported: 0,
       skipped: 2,
       uncategorized: 0,
+      duplicates: 0,
       errors: ["Fila 2: Fecha inválida", "Fila 5: Importe inválido"],
     });
     const { user } = setup();
@@ -310,18 +426,18 @@ describe("CsvImportDialog — detección automática", () => {
     expect(previewSpy.mock.calls[1][1]).toBe(true);
   });
 
-  it("aplica las columnas sugeridas para poder importar sin tocar nada", async () => {
+  it("aplica las columnas sugeridas para poder avanzar sin tocar nada", async () => {
     previewSpy.mockResolvedValue(previewSinCabecera);
     const { user } = setup();
     await upload(user);
     await screen.findByText("Mapear columnas");
 
-    const importButton = screen.getByRole("button", { name: /Importar/ });
-    await waitFor(() => expect(importButton).toBeEnabled());
-    await user.click(importButton);
+    const reviewButton = screen.getByRole("button", { name: /Revisar/ });
+    await waitFor(() => expect(reviewButton).toBeEnabled());
+    await user.click(reviewButton);
 
-    await waitFor(() => expect(importSpy).toHaveBeenCalled());
-    const [, , mapping] = importSpy.mock.calls[0];
+    await waitFor(() => expect(planSpy).toHaveBeenCalled());
+    const [, , mapping] = planSpy.mock.calls[0];
     expect(mapping).toMatchObject({
       date_col: "Columna 1",
       concept_col: "Columna 2",

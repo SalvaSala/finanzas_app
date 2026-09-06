@@ -11,7 +11,12 @@ from app.models import Transaction
 from app.models.enums import TransactionType
 from app.repositories import transaction as transaction_repo
 from app.schemas import TransactionCreate, TransactionRead, TransactionUpdate
-from app.schemas.csv import ColumnMapping, CsvImportMappedResult, CsvPreviewResult
+from app.schemas.csv import (
+    ColumnMapping,
+    CsvImportMappedResult,
+    CsvImportPreview,
+    CsvPreviewResult,
+)
 from app.schemas.tag import TagRead
 from app.schemas.transaction import ConceptSuggestion, ImportResult
 from app.services import csv_io
@@ -63,8 +68,9 @@ def create_transaction(
     return transaction_service.create_transaction(session, data)
 
 
-# NOTE: /export, /csv-preview, /csv-import-mapped, /import-csv must be declared
-# BEFORE /{transaction_id} so FastAPI does not treat literal strings as int params.
+# NOTE: /export, /csv-preview, /csv-import-preview, /csv-import-mapped and
+# /import-csv must be declared BEFORE /{transaction_id} so FastAPI does not
+# treat literal strings as int params.
 
 
 @router.get("/export")
@@ -111,6 +117,19 @@ async def csv_preview(
     """
     raw = await file.read()
     return csv_io.detect_csv(raw, has_header)
+
+
+@router.post("/csv-import-preview", response_model=CsvImportPreview)
+async def csv_import_preview(
+    file: UploadFile,
+    account_id: int = Form(...),
+    mapping: str = Form(...),
+    session: Session = Depends(get_session),
+) -> CsvImportPreview:
+    """Dry run of a mapped import: what would be stored, without storing it."""
+    raw = await file.read()
+    mapping_data = ColumnMapping.model_validate_json(mapping)
+    return csv_io.preview_import_mapped(session, raw, account_id, mapping_data)
 
 
 @router.post("/csv-import-mapped", response_model=CsvImportMappedResult)

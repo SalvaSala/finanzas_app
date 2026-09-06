@@ -16,6 +16,7 @@ from app.models.categorization_rule import CategorizationRule
 from app.models.enums import TransactionType
 from app.schemas.csv import ColumnMapping
 from app.services import csv_io as service
+from app.services.exceptions import NotFoundError
 
 
 def _require_id(value: int | None) -> int:
@@ -297,8 +298,8 @@ def test_parse_amount_rejects_garbage() -> None:
 # ── Importación con mapeo de columnas ─────────────────────────────────────────
 
 
-def _mapping(**overrides: str | None) -> ColumnMapping:
-    base: dict[str, str | None] = {
+def _mapping(**overrides: str | bool | None) -> ColumnMapping:
+    base: dict[str, str | bool | None] = {
         "date_col": "Fecha",
         "concept_col": "Concepto",
         "amount_col": "Importe",
@@ -639,3 +640,184 @@ def test_import_mapped_does_not_count_what_a_rule_categorized(session: Session) 
     assert result.uncategorized == 0
     tx = session.exec(select(Transaction)).one()
     assert tx.category_id == food.id
+
+
+# ── Deduplicación ─────────────────────────────────────────────────────────────
+
+# Dos movimientos distintos el mismo día, para reimportar el fichero entero.
+DOS_FILAS = b"Fecha;Concepto;Importe\n01/06/2026;Compra;-20,00\n01/06/2026;Cena;-35,00\n"
+
+
+def test_import_mapped_skips_what_is_already_stored(session: Session) -> None:
+    """Reimportar el mismo extracto no debe duplicar nada."""
+    bank, _, _, _ = _setup(session)
+
+    primera = service.import_csv_mapped(session, DOS_FILAS, _require_id(bank.id), _mapping())
+    segunda = service.import_csv_mapped(session, DOS_FILAS, _require_id(bank.id), _mapping())
+
+    assert primera.imported == 2
+    assert primera.duplicates == 0
+    assert segunda.imported == 0
+    assert segunda.duplicates == 2
+    assert len(session.exec(select(Transaction)).all()) == 2
+
+
+def test_import_mapped_can_import_duplicates_on_purpose(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+    service.import_csv_mapped(session, DOS_FILAS, _require_id(bank.id), _mapping())
+
+    result = service.import_csv_mapped(
+        session, DOS_FILAS, _require_id(bank.id), _mapping(skip_duplicates=False)
+    )
+
+    assert result.imported == 2
+    assert result.duplicates == 2  # se informa igualmente
+    assert len(session.exec(select(Transaction)).all()) == 4
+
+
+def test_import_mapped_keeps_genuine_repeats_within_a_file(session: Session) -> None:
+    """Dos cafés idénticos el mismo día son dos movimientos, no un duplicado."""
+    bank, _, _, _ = _setup(session)
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;Cafe;-1,50\n01/06/2026;Cafe;-1,50\n"
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert result.imported == 2
+    assert result.duplicates == 0
+
+
+def test_import_mapped_matches_repeats_one_by_one(session: Session) -> None:
+    """Con uno guardado y dos en el fichero, entra solo el que falta."""
+    bank, _, _, _ = _setup(session)
+    service.import_csv_mapped(
+        session,
+        b"Fecha;Concepto;Importe\n01/06/2026;Cafe;-1,50\n",
+        _require_id(bank.id),
+        _mapping(),
+    )
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;Cafe;-1,50\n01/06/2026;Cafe;-1,50\n"
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert result.imported == 1
+    assert result.duplicates == 1
+    assert len(session.exec(select(Transaction)).all()) == 2
+
+
+def test_import_mapped_does_not_confuse_other_accounts(session: Session) -> None:
+    """El mismo movimiento en otra cuenta no es un duplicado."""
+    bank, cash, _, _ = _setup(session)
+    service.import_csv_mapped(session, DOS_FILAS, _require_id(bank.id), _mapping())
+
+    result = service.import_csv_mapped(session, DOS_FILAS, _require_id(cash.id), _mapping())
+
+    assert result.imported == 2
+    assert result.duplicates == 0
+
+
+def test_import_mapped_ignores_case_and_spacing_in_the_concept(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+    service.import_csv_mapped(
+        session,
+        b"Fecha;Concepto;Importe\n01/06/2026;Compra;-20,00\n",
+        _require_id(bank.id),
+        _mapping(),
+    )
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;COMPRA  ;-20,00\n"
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert result.duplicates == 1
+
+
+# ── Previsualización (dry run) ────────────────────────────────────────────────
+
+
+def test_preview_does_not_write_anything(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+
+    preview = service.preview_import_mapped(session, DOS_FILAS, _require_id(bank.id), _mapping())
+
+    assert preview.total == 2
+    assert preview.ready == 2
+    assert preview.duplicates == 0
+    assert preview.errors == 0
+    assert session.exec(select(Transaction)).all() == []
+
+
+def test_preview_shows_the_parsed_values(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+
+    preview = service.preview_import_mapped(session, DOS_FILAS, _require_id(bank.id), _mapping())
+
+    first = preview.rows[0]
+    assert first.line == 2  # la 1 es la cabecera
+    assert first.date == "2026-06-01"
+    assert first.type == TransactionType.expense
+    assert first.amount == "20.00"
+    assert first.concept == "Compra"
+    assert first.error is None
+
+
+def test_preview_marks_rows_already_stored(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+    service.import_csv_mapped(session, DOS_FILAS, _require_id(bank.id), _mapping())
+
+    preview = service.preview_import_mapped(session, DOS_FILAS, _require_id(bank.id), _mapping())
+
+    assert preview.ready == 0
+    assert preview.duplicates == 2
+    assert all(row.duplicate for row in preview.rows)
+
+
+def test_preview_reports_the_row_that_will_fail(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;Compra;-20,00\nno-es-fecha;Otra;-5,00\n"
+
+    preview = service.preview_import_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert preview.ready == 1
+    assert preview.errors == 1
+    fallida = preview.rows[1]
+    assert fallida.line == 3
+    assert fallida.error is not None and "Fecha inválida" in fallida.error
+    assert fallida.amount is None
+
+
+def test_preview_shows_the_category_a_rule_would_assign(session: Session) -> None:
+    """La previsualización debe reflejar las reglas, no solo la columna del CSV."""
+    bank, _, food, market = _setup(session)
+    session.add(
+        CategorizationRule(
+            pattern="Mercadona",
+            category_id=_require_id(food.id),
+            subcategory_id=_require_id(market.id),
+        )
+    )
+    session.commit()
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;Compra Mercadona;-20,00\n"
+
+    preview = service.preview_import_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert preview.rows[0].category == "Alimentación › Supermercado"
+
+
+def test_preview_unknown_account(session: Session) -> None:
+    _setup(session)
+    with pytest.raises(NotFoundError):
+        service.preview_import_mapped(session, DOS_FILAS, 9999, _mapping())
+
+
+# ── Escritura en una sola transacción ─────────────────────────────────────────
+
+
+def test_import_mapped_writes_the_good_rows_and_reports_the_bad(session: Session) -> None:
+    """Una fila inválida no debe impedir que entren las demás."""
+    bank, _, _, _ = _setup(session)
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;Buena;-20,00\nno-es-fecha;Mala;-5,00\n"
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert result.imported == 1
+    assert result.skipped == 1
+    assert len(session.exec(select(Transaction)).all()) == 1

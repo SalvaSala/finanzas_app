@@ -50,6 +50,8 @@ export type ImportResult = components["schemas"]["ImportResult"];
 export type CsvPreviewResult = components["schemas"]["CsvPreviewResult"];
 export type CsvImportMappedResult = components["schemas"]["CsvImportMappedResult"];
 export type SuggestedMapping = components["schemas"]["SuggestedMapping"];
+export type CsvImportPreview = components["schemas"]["CsvImportPreview"];
+export type ImportPreviewRow = components["schemas"]["ImportPreviewRow"];
 
 export interface ColumnMapping {
   date_col: string;
@@ -62,12 +64,22 @@ export interface ColumnMapping {
   decimal_sep?: string;  // "auto" | "dot" | "comma"
   sign_convention?: string;  // "signed"
   has_header?: boolean | null;  // null: que lo detecte el backend
+  skip_duplicates?: boolean;   // no reimportar lo que ya está guardado
 }
 
 export interface ConceptSuggestion {
   concept: string;
   category_id: number | null;
   subcategory_id: number | null;
+}
+
+/** Cuerpo multipart que comparten la previsualización y la importación con mapeo. */
+function csvImportBody(file: File, accountId: number, mapping: ColumnMapping): FormData {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("account_id", String(accountId));
+  body.append("mapping", JSON.stringify(mapping));
+  return body;
 }
 
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
@@ -186,17 +198,19 @@ export const api = {
         `/api/transactions/concepts?q=${encodeURIComponent(q)}`,
       ),
 
-    csvImportMapped: (file: File, accountId: number, mapping: ColumnMapping) => {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("account_id", String(accountId));
-      body.append("mapping", JSON.stringify(mapping));
-      return apiFetch<CsvImportMappedResult>("/api/transactions/csv-import-mapped", {
+    csvImportPreview: (file: File, accountId: number, mapping: ColumnMapping) =>
+      apiFetch<CsvImportPreview>("/api/transactions/csv-import-preview", {
         method: "POST",
         headers: {},
-        body,
-      });
-    },
+        body: csvImportBody(file, accountId, mapping),
+      }),
+
+    csvImportMapped: (file: File, accountId: number, mapping: ColumnMapping) =>
+      apiFetch<CsvImportMappedResult>("/api/transactions/csv-import-mapped", {
+        method: "POST",
+        headers: {},
+        body: csvImportBody(file, accountId, mapping),
+      }),
   },
 
   dashboard: {

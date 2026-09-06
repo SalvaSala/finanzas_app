@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, Field
 
+from app.models.enums import TransactionType
+
 
 class SuggestedMapping(BaseModel):
     """Best guess for each app field, produced by the auto-detection.
@@ -45,6 +47,9 @@ class ColumnMapping(BaseModel):
     decimal_sep: str = "auto"  # "auto" | "dot" | "comma"
     sign_convention: str = "signed"  # "signed": negative→expense, positive→income
     has_header: bool | None = None  # None: detect it the same way the preview did
+    # Leave out rows already stored. Bank exports go by date range and users
+    # overlap them, so re-importing must not duplicate what is already there.
+    skip_duplicates: bool = True
 
 
 class CsvImportMappedResult(BaseModel):
@@ -52,3 +57,28 @@ class CsvImportMappedResult(BaseModel):
     skipped: int
     uncategorized: int
     errors: list[str]
+    # Rows left out because the movement was already stored.
+    duplicates: int = 0
+
+
+class ImportPreviewRow(BaseModel):
+    """One CSV line as it would be stored, before anything is written."""
+
+    line: int  # line number in the file, so errors can be traced back
+    date: str | None = None
+    type: TransactionType | None = None
+    concept: str = ""
+    amount: str | None = None  # Decimal as string: never a float for money
+    category: str | None = None  # "Padre › Hijo", including what a rule assigns
+    duplicate: bool = False
+    error: str | None = None
+
+
+class CsvImportPreview(BaseModel):
+    """Dry run of an import: what would happen, without touching the database."""
+
+    rows: list[ImportPreviewRow]  # capped sample, see `total` for the real count
+    total: int
+    ready: int
+    duplicates: int
+    errors: int

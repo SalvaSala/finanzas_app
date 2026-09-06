@@ -17,6 +17,33 @@ def create(session: Session, transaction: Transaction) -> Transaction:
     return transaction
 
 
+def create_many(session: Session, transactions: list[Transaction]) -> list[Transaction]:
+    """Persist several transactions with a single commit.
+
+    Used by the CSV import so a file either lands whole or not at all, instead
+    of leaving half of it written when something fails midway.
+    """
+    if not transactions:
+        return []
+    session.add_all(transactions)
+    session.commit()
+    for transaction in transactions:
+        session.refresh(transaction)
+    return transactions
+
+
+def list_in_range(session: Session, start: dt.date, end: dt.date) -> list[Transaction]:
+    """Every transaction dated within [start, end], across all accounts.
+
+    The CSV import uses it to spot movements it already stored, so the query is
+    bounded by the dates the file actually covers.
+    """
+    statement = select(Transaction).where(
+        col(Transaction.date) >= start, col(Transaction.date) <= end
+    )
+    return list(session.exec(statement).all())
+
+
 def get(session: Session, transaction_id: int) -> Transaction | None:
     return session.get(Transaction, transaction_id)
 

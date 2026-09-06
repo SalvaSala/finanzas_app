@@ -55,27 +55,47 @@ def _validate_refs(
             raise ValidationError("La subcategoría no coincide con el tipo del movimiento.")
 
 
-def create_transaction(session: Session, data: TransactionCreate) -> Transaction:
-    dump = data.model_dump()
+def resolve_category(session: Session, data: TransactionCreate) -> tuple[int | None, int | None]:
+    """Return the (category, subcategory) the movement ends up with.
 
-    # Auto-categorize when concept is provided and no category was set manually.
-    if data.category_id is None and data.concept:
-        rule = rule_repo.find_match(session, data.concept)
-        if rule is not None:
-            dump["category_id"] = rule.category_id
-            if data.subcategory_id is None:
-                dump["subcategory_id"] = rule.subcategory_id
+    Auto-categorizes from the rules when a concept is given and no category was
+    set manually. Exposed so the CSV import preview can show exactly what the
+    import will store without writing anything.
+    """
+    if data.category_id is not None or not data.concept:
+        return data.category_id, data.subcategory_id
+
+    rule = rule_repo.find_match(session, data.concept)
+    if rule is None:
+        return data.category_id, data.subcategory_id
+
+    subcategory_id = data.subcategory_id if data.subcategory_id is not None else rule.subcategory_id
+    return rule.category_id, subcategory_id
+
+
+def build_transaction(session: Session, data: TransactionCreate) -> Transaction:
+    """Validate a payload and return an unsaved ``Transaction``.
+
+    Split out from :func:`create_transaction` so a bulk import can validate each
+    row on its own — reporting the bad ones by line — and still write the good
+    ones in a single commit.
+    """
+    dump = data.model_dump()
+    dump["category_id"], dump["subcategory_id"] = resolve_category(session, data)
 
     _validate_refs(
         session,
         transaction_type=data.type,
         account_id=data.account_id,
         transfer_account_id=data.transfer_account_id,
-        category_id=dump.get("category_id"),
-        subcategory_id=dump.get("subcategory_id"),
+        category_id=dump["category_id"],
+        subcategory_id=dump["subcategory_id"],
     )
-    transaction = Transaction(**dump)
-    return transaction_repo.create(session, transaction)
+    return Transaction(**dump)
+
+
+def create_transaction(session: Session, data: TransactionCreate) -> Transaction:
+    return transaction_repo.create(session, build_transaction(session, data))
 
 
 def get_transaction(session: Session, transaction_id: int) -> Transaction:
