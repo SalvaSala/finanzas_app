@@ -49,6 +49,7 @@ export type BackupActionResult =
 export type ImportResult = components["schemas"]["ImportResult"];
 export type CsvPreviewResult = components["schemas"]["CsvPreviewResult"];
 export type CsvImportMappedResult = components["schemas"]["CsvImportMappedResult"];
+export type SuggestedMapping = components["schemas"]["SuggestedMapping"];
 
 export interface ColumnMapping {
   date_col: string;
@@ -56,9 +57,11 @@ export interface ColumnMapping {
   amount_col: string;
   description_col?: string | null;
   category_col?: string | null;
+  type_col?: string | null;
   date_format?: string;  // "auto" | "iso" | "mdy" | "dmy"
   decimal_sep?: string;  // "auto" | "dot" | "comma"
   sign_convention?: string;  // "signed"
+  has_header?: boolean | null;  // null: que lo detecte el backend
 }
 
 export interface ConceptSuggestion {
@@ -167,9 +170,10 @@ export const api = {
       });
     },
 
-    csvPreview: (file: File) => {
+    csvPreview: (file: File, hasHeader?: boolean) => {
       const body = new FormData();
       body.append("file", file);
+      if (hasHeader !== undefined) body.append("has_header", String(hasHeader));
       return apiFetch<CsvPreviewResult>("/api/transactions/csv-preview", {
         method: "POST",
         headers: {},

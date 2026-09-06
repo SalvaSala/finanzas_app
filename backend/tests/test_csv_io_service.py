@@ -12,6 +12,7 @@ import pytest
 from sqlmodel import Session, select
 
 from app.models import Account, AccountType, Category, CategoryType, Transaction
+from app.models.categorization_rule import CategorizationRule
 from app.models.enums import TransactionType
 from app.schemas.csv import ColumnMapping
 from app.services import csv_io as service
@@ -417,3 +418,224 @@ def test_import_mapped_empty_file(session: Session) -> None:
 
     assert result.imported == 0
     assert "vacío" in result.errors[0]
+
+
+# ── Detección de separador ────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ("Fecha;Concepto;Importe\n01/06/2026;Compra;-20,00\n", ";"),
+        ("Fecha,Concepto,Importe\n2026-06-01,Compra,-20.00\n", ","),
+        ("Fecha\tConcepto\tImporte\n01/06/2026\tCompra\t-20,00\n", "\t"),
+        ("01/09/2026|Compra|01/09/2026|-20.00|100.00||ref\n", "|"),
+    ],
+)
+def test_detect_separator(content: str, expected: str) -> None:
+    assert service._detect_separator(content) == expected
+
+
+def test_detect_separator_prefers_the_delimiter_with_more_columns() -> None:
+    """Con decimales en coma y sin cabecera, el punto y coma debe ganar."""
+    content = "01/06/2026;Compra;-20,00\n02/06/2026;Nómina;1500,00\n"
+
+    assert service._detect_separator(content) == ";"
+
+
+# ── Ficheros sin cabecera (extracto tipo Banco Sabadell) ──────────────────────
+
+# Barras verticales, sin cabecera ni preámbulo, con fecha de operación, fecha
+# de valor, importe con signo, saldo corriente y dos columnas de referencia.
+SABADELL_TXT = (
+    b"07/09/2026|PAGO BIZUM ANA L.|06/09/2026|-33.00|1846.26||111111111111\n"
+    b"07/09/2026|COMPRA TARJ. 5555XXXXXXXX1234 TIENDA UNO|08/09/2026|-45.89|1879.26||5555__1234\n"
+    b"04/09/2026|COMPRA TARJ. 5555XXXXXXXX1234 TIENDA DOS|07/09/2026|-27.90|1925.15||5555__1234\n"
+    b"03/09/2026|COMPRA TARJ. 5555XXXXXXXX1234 TIENDA TRES|06/09/2026|-7.55|1953.05||5555__1234\n"
+    b"01/09/2026|TRANSFERENCIA RECIBIDA|01/09/2026|450.00|1960.60|333333333|\n"
+)
+
+
+def test_detect_csv_without_header_names_the_columns() -> None:
+    preview = service.detect_csv(SABADELL_TXT)
+
+    assert preview.has_header is False
+    assert preview.separator == "|"
+    assert preview.headers[:3] == ["Columna 1", "Columna 2", "Columna 3"]
+    assert len(preview.preview_rows) == 5
+
+
+def test_detect_csv_recognises_a_header_row() -> None:
+    preview = service.detect_csv(b"Fecha;Concepto;Importe\n01/06/2026;Compra;-20,00\n")
+
+    assert preview.has_header is True
+    assert preview.headers == ["Fecha", "Concepto", "Importe"]
+
+
+def test_detect_csv_honours_the_header_override() -> None:
+    """El usuario puede corregir la detección desde el asistente."""
+    preview = service.detect_csv(SABADELL_TXT, has_header=True)
+
+    assert preview.has_header is True
+    assert preview.headers[0] == "07/09/2026"
+    assert len(preview.preview_rows) == 4
+
+
+def test_import_mapped_without_header_keeps_the_first_row(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+    mapping = ColumnMapping(
+        date_col="Columna 1",
+        concept_col="Columna 2",
+        amount_col="Columna 4",
+        has_header=False,
+    )
+
+    result = service.import_csv_mapped(session, SABADELL_TXT, _require_id(bank.id), mapping)
+
+    assert result.imported == 5
+    assert result.skipped == 0
+    types = [tx.type for tx in session.exec(select(Transaction)).all()]
+    assert types.count(TransactionType.expense) == 4
+    assert types.count(TransactionType.income) == 1
+
+
+# ── Sugerencia automática de columnas ─────────────────────────────────────────
+
+
+def test_suggest_mapping_by_content_ignores_the_balance() -> None:
+    """Sin cabecera: fecha de operación, concepto e importe, nunca el saldo."""
+    suggested = service.detect_csv(SABADELL_TXT).suggested
+
+    assert suggested.date_col == "Columna 1"  # la operativa, no la de valor
+    assert suggested.concept_col == "Columna 2"
+    assert suggested.amount_col == "Columna 4"  # y no la 5, que es el saldo
+
+
+def test_suggest_mapping_by_header_name() -> None:
+    raw = (
+        b"F. Operativa;Concepto;F. Valor;Importe;Saldo;Referencia 1;Referencia 2\n"
+        b"07/09/2026;Compra;08/09/2026;-45,89;1879,26;;5555__1234\n"
+    )
+
+    suggested = service.detect_csv(raw).suggested
+
+    assert suggested.date_col == "F. Operativa"  # y no "F. Valor"
+    assert suggested.concept_col == "Concepto"
+    assert suggested.amount_col == "Importe"  # "Saldo" está en la lista negra
+    assert suggested.description_col == "Referencia 2"
+
+
+def test_suggest_mapping_leaves_unknown_fields_empty() -> None:
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;Compra;-20,00\n"
+
+    suggested = service.detect_csv(raw).suggested
+
+    assert suggested.category_col is None
+    assert suggested.type_col is None
+
+
+# ── Reconocimiento del CSV propio de la app ───────────────────────────────────
+
+
+def test_detect_csv_recognises_the_app_export(session: Session) -> None:
+    bank, _, food, market = _setup(session)
+    tx = Transaction(
+        date=dt.date(2026, 6, 15),
+        type=TransactionType.expense,
+        concept="Compra semanal",
+        amount=Decimal("42.50"),
+        account_id=bank.id,
+        category_id=food.id,
+        subcategory_id=market.id,
+    )
+    session.add(tx)
+    session.commit()
+
+    preview = service.detect_csv(service.export_csv(session, [tx]).encode())
+
+    assert preview.is_native is True
+
+
+def test_detect_csv_does_not_flag_a_bank_file_as_native() -> None:
+    assert service.detect_csv(SABADELL_TXT).is_native is False
+
+
+# ── Columna de tipo ───────────────────────────────────────────────────────────
+
+
+def test_import_mapped_type_column_overrides_the_sign(session: Session) -> None:
+    """Importes positivos con columna de tipo: el gasto no entra como ingreso."""
+    bank, _, _, _ = _setup(session)
+    raw = b"Fecha;Tipo;Concepto;Importe\n01/06/2026;gasto;Compra;42,50\n"
+
+    result = service.import_csv_mapped(
+        session, raw, _require_id(bank.id), _mapping(type_col="Tipo")
+    )
+
+    assert result.imported == 1
+    tx = session.exec(select(Transaction)).one()
+    assert tx.type == TransactionType.expense
+    assert tx.amount == Decimal("42.50")
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("gasto", TransactionType.expense),
+        ("Cargo", TransactionType.expense),
+        ("D", TransactionType.expense),
+        ("ingreso", TransactionType.income),
+        ("Abono", TransactionType.income),
+        ("H", TransactionType.income),
+    ],
+)
+def test_resolve_type_accepts_bank_wordings(value: str, expected: TransactionType) -> None:
+    assert service._resolve_type(value, TransactionType.income) == expected
+
+
+def test_resolve_type_falls_back_to_the_sign_when_empty() -> None:
+    assert service._resolve_type("", TransactionType.expense) == TransactionType.expense
+
+
+def test_resolve_type_rejects_unknown_values() -> None:
+    with pytest.raises(ValueError, match="desconocido"):
+        service._resolve_type("nosequé", TransactionType.income)
+
+
+def test_import_mapped_reports_transfers_it_cannot_place(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+    raw = b"Fecha;Tipo;Concepto;Importe\n01/06/2026;transferencia;Traspaso;100,00\n"
+
+    result = service.import_csv_mapped(
+        session, raw, _require_id(bank.id), _mapping(type_col="Tipo")
+    )
+
+    assert result.imported == 0
+    assert "cuenta destino" in result.errors[0]
+
+
+# ── Recuento de movimientos sin categoría ─────────────────────────────────────
+
+
+def test_import_mapped_counts_rows_left_without_category(session: Session) -> None:
+    """Sin columna de categoría el resultado debe decir que no se categorizó nada."""
+    bank, _, _, _ = _setup(session)
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;Compra;-20,00\n02/06/2026;Otra;-5,00\n"
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert result.imported == 2
+    assert result.uncategorized == 2
+
+
+def test_import_mapped_does_not_count_what_a_rule_categorized(session: Session) -> None:
+    bank, _, food, _ = _setup(session)
+    session.add(CategorizationRule(pattern="Mercadona", category_id=_require_id(food.id)))
+    session.commit()
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;Compra Mercadona;-20,00\n"
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert result.uncategorized == 0
+    tx = session.exec(select(Transaction)).one()
+    assert tx.category_id == food.id

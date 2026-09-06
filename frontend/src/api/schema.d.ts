@@ -140,7 +140,10 @@ export interface paths {
         put?: never;
         /**
          * Csv Preview
-         * @description Auto-detect encoding/separator and return headers + first 5 rows.
+         * @description Auto-detect encoding/separator/header and return headers + first 5 rows.
+         *
+         *     *has_header* lets the wizard re-read the file when the user corrects the
+         *     header detection, so the preview always matches what the import will do.
          */
         post: operations["csv_preview_api_transactions_csv_preview_post"];
         delete?: never;
@@ -745,6 +748,8 @@ export interface components {
         Body_csv_preview_api_transactions_csv_preview_post: {
             /** File */
             file: string;
+            /** Has Header */
+            has_header?: boolean | null;
         };
         /** Body_import_transactions_api_transactions_import_csv_post */
         Body_import_transactions_api_transactions_import_csv_post: {
@@ -967,6 +972,17 @@ export interface components {
             headers: string[];
             /** Preview Rows */
             preview_rows: string[][];
+            /**
+             * Has Header
+             * @default true
+             */
+            has_header: boolean;
+            /**
+             * Is Native
+             * @default false
+             */
+            is_native: boolean;
+            suggested?: components["schemas"]["SuggestedMapping"];
         };
         /**
          * DashboardSummary
@@ -1249,6 +1265,27 @@ export interface components {
             category_id: number;
             /** Subcategory Id */
             subcategory_id: number | null;
+        };
+        /**
+         * SuggestedMapping
+         * @description Best guess for each app field, produced by the auto-detection.
+         *
+         *     Every field is optional: the detection fills in what it recognises and
+         *     leaves the rest for the user to choose in the wizard.
+         */
+        SuggestedMapping: {
+            /** Date Col */
+            date_col?: string | null;
+            /** Concept Col */
+            concept_col?: string | null;
+            /** Amount Col */
+            amount_col?: string | null;
+            /** Description Col */
+            description_col?: string | null;
+            /** Category Col */
+            category_col?: string | null;
+            /** Type Col */
+            type_col?: string | null;
         };
         /** TagCreate */
         TagCreate: {

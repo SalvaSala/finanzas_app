@@ -1,10 +1,23 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, FileText, CheckCircle, AlertCircle, ArrowLeft, Tag } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  ArrowLeft,
+  Tag,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
-import type { AccountRead, ColumnMapping, CsvImportMappedResult, CsvPreviewResult } from "@/api/client";
+import type {
+  AccountRead,
+  ColumnMapping,
+  CsvImportMappedResult,
+  CsvPreviewResult,
+} from "@/api/client";
 import { api } from "@/api/client";
 import { useAccounts } from "@/hooks/useAccounts";
 import { Button } from "@/components/ui/button";
@@ -25,7 +38,7 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Step = "upload" | "map" | "result";
+type Step = "upload" | "native" | "map" | "result";
 
 const NONE = "__none__";
 
@@ -33,6 +46,7 @@ const APP_FIELDS: { key: keyof ColumnMapping; label: string; required: boolean }
   { key: "date_col",        label: "Fecha",             required: true  },
   { key: "concept_col",     label: "Concepto",          required: true  },
   { key: "amount_col",      label: "Importe",           required: true  },
+  { key: "type_col",        label: "Tipo (ingreso/gasto)", required: false },
   { key: "description_col", label: "Descripción",       required: false },
   { key: "category_col",    label: "Categoría (CSV)",   required: false },
 ];
@@ -49,6 +63,16 @@ const DECIMAL_SEPS = [
   { value: "dot",   label: "Punto  (1.234,56 → no)" },
   { value: "comma", label: "Coma   (1.234,56 → sí)" },
 ];
+
+const SEPARATOR_LABELS: Record<string, string> = {
+  ";":  "punto y coma (;)",
+  ",":  "coma (,)",
+  "\t": "tabulador",
+  "|":  "barra vertical (|)",
+};
+
+/** Acepta el CSV propio de la app y los .txt/.csv que exportan los bancos. */
+const ACCEPTED = /\.(csv|txt)$/i;
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -77,7 +101,7 @@ function StepUpload({ onPreview }: Step1Props) {
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     const f = e.dataTransfer.files[0];
-    if (f?.name.endsWith(".csv")) handleFile(f);
+    if (f && ACCEPTED.test(f.name)) handleFile(f);
   }
 
   async function handleNext() {
@@ -88,7 +112,7 @@ function StepUpload({ onPreview }: Step1Props) {
       const preview = await api.transactions.csvPreview(file);
       onPreview(file, preview);
     } catch {
-      setError("No se pudo leer el archivo. Comprueba que es un CSV válido.");
+      setError("No se pudo leer el archivo. Comprueba que es un CSV o TXT válido.");
     } finally {
       setLoading(false);
     }
@@ -115,7 +139,7 @@ function StepUpload({ onPreview }: Step1Props) {
             <Upload className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm font-medium">Arrastra un archivo CSV o haz clic para seleccionarlo</p>
             <p className="text-xs text-muted-foreground">
-              Compatible con HomeBank, cualquier banco u otra app de finanzas
+              Admite .csv y .txt de cualquier banco, HomeBank u otra app de finanzas
             </p>
           </>
         )}
@@ -124,7 +148,7 @@ function StepUpload({ onPreview }: Step1Props) {
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,text/csv"
+        accept=".csv,.txt,text/csv,text/plain"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -148,30 +172,112 @@ function StepUpload({ onPreview }: Step1Props) {
   );
 }
 
-// ── Step 2 — Column mapping ───────────────────────────────────────────────────
+// ── Step 2a — Native FinApp CSV (no mapping needed) ───────────────────────────
+
+interface StepNativeProps {
+  file: File;
+  onBack: () => void;
+  onImport: (result: CsvImportMappedResult) => void;
+}
+
+function StepNative({ file, onBack, onImport }: StepNativeProps) {
+  const qc = useQueryClient();
+  const [loading, setLoading] = useState(false);
+
+  async function handleImport() {
+    setLoading(true);
+    try {
+      const result = await api.transactions.importCsv(file);
+      if (result.imported > 0) {
+        qc.invalidateQueries({ queryKey: ["transactions"] });
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+        qc.invalidateQueries({ queryKey: ["budgets"] });
+      }
+      // El importador propio no lleva la cuenta de los que quedan sin categoría:
+      // el CSV trae las suyas y las que no existan se rechazan como error de fila.
+      onImport({ ...result, uncategorized: 0 });
+    } catch (err) {
+      toast.error((err as Error).message || "Error al importar el CSV");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4">
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-income" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Es un CSV exportado por FinApp</p>
+          <p className="text-xs text-muted-foreground">
+            Trae sus propias columnas de tipo, cuenta y categoría, así que se importa
+            entero sin mapear nada. Las cuentas y categorías deben existir ya en la app.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex justify-between gap-2">
+        <Button variant="outline" size="sm" onClick={onBack}>
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+          Volver
+        </Button>
+        <Button onClick={handleImport} disabled={loading}>
+          {loading ? "Importando…" : "Importar"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 2b — Column mapping ──────────────────────────────────────────────────
 
 interface Step2Props {
   file: File;
   preview: CsvPreviewResult;
   accounts: AccountRead[];
   onBack: () => void;
+  onPreviewChange: (preview: CsvPreviewResult) => void;
   onImport: (result: CsvImportMappedResult) => void;
 }
 
-function StepMap({ file, preview, accounts, onBack, onImport }: Step2Props) {
+function StepMap({ file, preview, accounts, onBack, onPreviewChange, onImport }: Step2Props) {
   const qc = useQueryClient();
+  const suggested = preview.suggested;
   const [accountId, setAccountId] = useState<string>(
     accounts.length === 1 ? String(accounts[0].id) : NONE
   );
   const [mapping, setMapping] = useState<Partial<ColumnMapping>>({
+    date_col: suggested?.date_col ?? undefined,
+    concept_col: suggested?.concept_col ?? undefined,
+    amount_col: suggested?.amount_col ?? undefined,
+    type_col: suggested?.type_col ?? null,
+    description_col: suggested?.description_col ?? null,
+    category_col: suggested?.category_col ?? null,
     date_format: "auto",
     decimal_sep: "auto",
     sign_convention: "signed",
   });
   const [loading, setLoading] = useState(false);
+  const [rereading, setRereading] = useState(false);
+
+  const autoMapped = Boolean(
+    suggested?.date_col && suggested?.concept_col && suggested?.amount_col
+  );
 
   function setCol(key: keyof ColumnMapping, value: string) {
     setMapping((m) => ({ ...m, [key]: value === NONE ? null : value }));
+  }
+
+  /** Releer el fichero en el backend para que cabeceras y datos no se desalineen. */
+  async function handleHeaderChange(hasHeader: boolean) {
+    setRereading(true);
+    try {
+      onPreviewChange(await api.transactions.csvPreview(file, hasHeader));
+    } catch {
+      toast.error("No se pudo releer el archivo");
+    } finally {
+      setRereading(false);
+    }
   }
 
   const requiredFilled =
@@ -193,9 +299,11 @@ function StepMap({ file, preview, accounts, onBack, onImport }: Step2Props) {
           amount_col: mapping.amount_col!,
           description_col: mapping.description_col ?? null,
           category_col: mapping.category_col ?? null,
+          type_col: mapping.type_col ?? null,
           date_format: mapping.date_format ?? "auto",
           decimal_sep: mapping.decimal_sep ?? "auto",
           sign_convention: mapping.sign_convention ?? "signed",
+          has_header: preview.has_header,
         }
       );
       if (result.imported > 0) {
@@ -216,7 +324,10 @@ function StepMap({ file, preview, accounts, onBack, onImport }: Step2Props) {
       {/* Preview table */}
       <div>
         <p className="mb-1.5 text-xs text-muted-foreground">
-          Vista previa · Separador detectado: <code className="font-mono">{preview.separator === ";" ? "punto y coma (;)" : "coma (,)"}</code>
+          Vista previa · Separador detectado:{" "}
+          <code className="font-mono">
+            {SEPARATOR_LABELS[preview.separator] ?? preview.separator}
+          </code>
         </p>
         <div className="overflow-x-auto rounded-md border">
           <table className="min-w-full text-xs">
@@ -242,11 +353,29 @@ function StepMap({ file, preview, accounts, onBack, onImport }: Step2Props) {
             </tbody>
           </table>
         </div>
+        <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 accent-primary"
+            checked={preview.has_header}
+            disabled={rereading}
+            onChange={(e) => handleHeaderChange(e.target.checked)}
+          />
+          La primera fila son los nombres de las columnas
+        </label>
       </div>
 
       {/* Column mapping */}
       <div className="space-y-3">
-        <p className="text-sm font-medium">Mapear columnas</p>
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-sm font-medium">Mapear columnas</p>
+          {autoMapped && (
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Sparkles className="h-3 w-3 text-income" />
+              Detectadas automáticamente, revísalas
+            </p>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           {APP_FIELDS.map(({ key, label, required }) => (
             <div key={key} className="space-y-1">
@@ -376,7 +505,7 @@ function StepResult({ result, onClose }: Step3Props) {
           <Tag className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
           <div className="flex-1 space-y-2">
             <p className="text-sm">
-              <strong>{result.uncategorized}</strong> movimiento{result.uncategorized !== 1 ? "s" : ""} importado{result.uncategorized !== 1 ? "s" : ""} sin categoría porque no coincidió con ninguna categoría de la app.
+              <strong>{result.uncategorized}</strong> movimiento{result.uncategorized !== 1 ? "s" : ""} entr{result.uncategorized !== 1 ? "aron" : "ó"} sin categoría. Puedes asignarlas a mano o crear reglas para la próxima importación.
             </p>
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={goToUncategorized}>
               Ver movimientos sin categoría →
@@ -420,6 +549,7 @@ export function CsvImportDialog({ open, onOpenChange }: Props) {
 
   const STEP_LABELS: Record<Step, string> = {
     upload: "1. Subir archivo",
+    native: "2. Confirmar",
     map:    "2. Mapear columnas",
     result: "3. Resultado",
   };
@@ -435,7 +565,7 @@ export function CsvImportDialog({ open, onOpenChange }: Props) {
   function handlePreview(f: File, p: CsvPreviewResult) {
     setFile(f);
     setPreview(p);
-    setStep("map");
+    setStep(p.is_native ? "native" : "map");
   }
 
   function handleImport(r: CsvImportMappedResult) {
@@ -460,12 +590,24 @@ export function CsvImportDialog({ open, onOpenChange }: Props) {
           <StepUpload onPreview={handlePreview} />
         )}
 
+        {step === "native" && file && (
+          <StepNative
+            file={file}
+            onBack={() => setStep("upload")}
+            onImport={handleImport}
+          />
+        )}
+
         {step === "map" && preview && file && (
           <StepMap
+            // Al cambiar la detección de cabecera cambian los nombres de columna,
+            // así que se remonta para volver a partir de la nueva sugerencia.
+            key={String(preview.has_header)}
             file={file}
             preview={preview}
             accounts={accounts}
             onBack={() => setStep("upload")}
+            onPreviewChange={setPreview}
             onImport={handleImport}
           />
         )}

@@ -23,12 +23,36 @@ const preview: CsvPreviewResult = {
     ["01/06/2026", "Mercadona", "-42,50", "Alimentación"],
     ["02/06/2026", "Nómina", "1500,00", "Ingresos"],
   ],
+  has_header: true,
+  is_native: false,
+};
+
+/** Extracto tipo Banco Sabadell: barras verticales, sin cabecera, con saldo. */
+const previewSinCabecera: CsvPreviewResult = {
+  encoding: "utf-8",
+  separator: "|",
+  headers: ["Columna 1", "Columna 2", "Columna 3", "Columna 4", "Columna 5"],
+  preview_rows: [["07/09/2026", "Bizum Ana", "06/09/2026", "-33.00", "1846.26"]],
+  has_header: false,
+  is_native: false,
+  suggested: {
+    date_col: "Columna 1",
+    concept_col: "Columna 2",
+    amount_col: "Columna 4",
+  },
 };
 
 function csvFile(name = "movimientos.csv"): File {
   return new File(["Fecha;Concepto;Importe\n01/06/2026;Mercadona;-42,50\n"], name, {
     type: "text/csv",
   });
+}
+
+/** Sube el fichero y pulsa analizar, sin esperar a un paso concreto. */
+async function upload(user: ReturnType<typeof userEvent.setup>, name?: string) {
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+  await user.upload(input, csvFile(name));
+  await user.click(screen.getByRole("button", { name: /Analizar CSV/ }));
 }
 
 function setup() {
@@ -59,6 +83,7 @@ async function goToMapping(user: ReturnType<typeof userEvent.setup>) {
 
 let previewSpy: MockInstance<typeof api.transactions.csvPreview>;
 let importSpy: MockInstance<typeof api.transactions.csvImportMapped>;
+let nativeImportSpy: MockInstance<typeof api.transactions.importCsv>;
 
 beforeEach(() => {
   mockFetch({ "/api/accounts": accounts });
@@ -66,11 +91,15 @@ beforeEach(() => {
   importSpy = vi
     .spyOn(api.transactions, "csvImportMapped")
     .mockResolvedValue({ imported: 2, skipped: 0, uncategorized: 0, errors: [] });
+  nativeImportSpy = vi
+    .spyOn(api.transactions, "importCsv")
+    .mockResolvedValue({ imported: 3, skipped: 0, errors: [] });
 });
 
 afterEach(() => {
   previewSpy.mockRestore();
   importSpy.mockRestore();
+  nativeImportSpy.mockRestore();
 });
 
 describe("CsvImportDialog — paso 1: subida", () => {
@@ -104,7 +133,7 @@ describe("CsvImportDialog — paso 1: subida", () => {
     await user.click(screen.getByRole("button", { name: /Analizar CSV/ }));
 
     expect(
-      await screen.findByText("No se pudo leer el archivo. Comprueba que es un CSV válido."),
+      await screen.findByText("No se pudo leer el archivo. Comprueba que es un CSV o TXT válido."),
     ).toBeInTheDocument();
   });
 });
@@ -245,5 +274,76 @@ describe("CsvImportDialog — paso 3: resultado", () => {
     await user.click(await screen.findByRole("button", { name: "Cerrar" }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+describe("CsvImportDialog — detección automática", () => {
+  it("acepta ficheros .txt del banco", async () => {
+    const { user } = setup();
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    await user.upload(input, csvFile("06092026_2710.txt"));
+
+    expect(screen.getByText("06092026_2710.txt")).toBeInTheDocument();
+  });
+
+  it("nombra las columnas cuando el fichero no trae cabecera", async () => {
+    previewSpy.mockResolvedValue(previewSinCabecera);
+    const { user } = setup();
+
+    await upload(user);
+
+    expect(await screen.findByRole("columnheader", { name: "Columna 1" })).toBeInTheDocument();
+    expect(screen.getByText("barra vertical (|)")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+  });
+
+  it("relee el fichero si se corrige la detección de cabecera", async () => {
+    previewSpy.mockResolvedValue(previewSinCabecera);
+    const { user } = setup();
+    await upload(user);
+    await screen.findByText("Mapear columnas");
+
+    await user.click(screen.getByRole("checkbox"));
+
+    await waitFor(() => expect(previewSpy).toHaveBeenCalledTimes(2));
+    expect(previewSpy.mock.calls[1][1]).toBe(true);
+  });
+
+  it("aplica las columnas sugeridas para poder importar sin tocar nada", async () => {
+    previewSpy.mockResolvedValue(previewSinCabecera);
+    const { user } = setup();
+    await upload(user);
+    await screen.findByText("Mapear columnas");
+
+    const importButton = screen.getByRole("button", { name: /Importar/ });
+    await waitFor(() => expect(importButton).toBeEnabled());
+    await user.click(importButton);
+
+    await waitFor(() => expect(importSpy).toHaveBeenCalled());
+    const [, , mapping] = importSpy.mock.calls[0];
+    expect(mapping).toMatchObject({
+      date_col: "Columna 1",
+      concept_col: "Columna 2",
+      amount_col: "Columna 4", // la 5 es el saldo y no debe colarse
+      type_col: null,
+      has_header: false,
+    });
+  });
+
+  it("importa el CSV propio de la app sin pedir mapeo", async () => {
+    previewSpy.mockResolvedValue({ ...preview, is_native: true });
+    const { user } = setup();
+
+    await upload(user);
+
+    expect(await screen.findByText("Es un CSV exportado por FinApp")).toBeInTheDocument();
+    expect(screen.queryByText("Mapear columnas")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Importar/ }));
+
+    await waitFor(() => expect(nativeImportSpy).toHaveBeenCalled());
+    expect(importSpy).not.toHaveBeenCalled();
+    expect(await screen.findByText(byWholeText("3 movimientos importados"))).toBeInTheDocument();
   });
 });

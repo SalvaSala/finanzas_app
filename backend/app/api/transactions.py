@@ -100,10 +100,17 @@ def export_transactions(
 
 
 @router.post("/csv-preview", response_model=CsvPreviewResult)
-async def csv_preview(file: UploadFile) -> CsvPreviewResult:
-    """Auto-detect encoding/separator and return headers + first 5 rows."""
+async def csv_preview(
+    file: UploadFile,
+    has_header: bool | None = Form(default=None),
+) -> CsvPreviewResult:
+    """Auto-detect encoding/separator/header and return headers + first 5 rows.
+
+    *has_header* lets the wizard re-read the file when the user corrects the
+    header detection, so the preview always matches what the import will do.
+    """
     raw = await file.read()
-    return csv_io.detect_csv(raw)
+    return csv_io.detect_csv(raw, has_header)
 
 
 @router.post("/csv-import-mapped", response_model=CsvImportMappedResult)

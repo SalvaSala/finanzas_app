@@ -3,7 +3,12 @@
 from app.schemas.account import AccountRead
 from app.schemas.budget import BudgetCreate, BudgetProgress, BudgetRead, BudgetUpdate
 from app.schemas.category import CategoryCreate, CategoryDeleteInfo, CategoryRead, CategoryUpdate
-from app.schemas.csv import ColumnMapping, CsvImportMappedResult, CsvPreviewResult
+from app.schemas.csv import (
+    ColumnMapping,
+    CsvImportMappedResult,
+    CsvPreviewResult,
+    SuggestedMapping,
+)
 from app.schemas.dashboard import (
     BalancePoint,
     CategoryAmount,
@@ -61,6 +66,7 @@ __all__ = [
     "ColumnMapping",
     "CsvImportMappedResult",
     "CsvPreviewResult",
+    "SuggestedMapping",
     "ImportResult",
     "TransactionCreate",
     "TransactionRead",
