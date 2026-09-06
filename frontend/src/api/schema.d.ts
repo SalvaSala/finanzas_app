@@ -995,6 +995,13 @@ export interface components {
              * @default 0
              */
             duplicates: number;
+            /**
+             * Auto Categorized
+             * @default 0
+             */
+            auto_categorized: number;
+            /** Uncategorized Concepts */
+            uncategorized_concepts?: components["schemas"]["UncategorizedConcept"][];
         };
         /**
          * CsvImportPreview
@@ -1517,6 +1524,19 @@ export interface components {
             name: string;
             /** Value */
             value: number;
+        };
+        /**
+         * UncategorizedConcept
+         * @description A concept that came in without a category, and a rule that would fix it.
+         */
+        UncategorizedConcept: {
+            /** Concept */
+            concept: string;
+            type: components["schemas"]["TransactionType"];
+            /** Count */
+            count: number;
+            /** Suggested Pattern */
+            suggested_pattern: string;
         };
         /** ValidationError */
         ValidationError: {

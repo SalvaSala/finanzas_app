@@ -9,6 +9,8 @@ import {
   Tag,
   Sparkles,
   Copy,
+  Check,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,11 +21,15 @@ import type {
   CsvImportMappedResult,
   CsvImportPreview,
   CsvPreviewResult,
+  UncategorizedConcept,
 } from "@/api/client";
 import { api } from "@/api/client";
 import { formatAmount, formatDate } from "@/lib/format";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useCategories } from "@/hooks/useCategories";
+import { useCreateCategorizationRule } from "@/hooks/useCategorizationRules";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -205,7 +211,7 @@ function StepNative({ file, onBack, onImport }: StepNativeProps) {
       }
       // El importador propio no lleva ninguna de las dos cuentas: el CSV trae sus
       // categorías y las que no existan se rechazan como error de fila.
-      onImport({ ...result, uncategorized: 0, duplicates: 0 });
+      onImport({ ...result, uncategorized: 0, duplicates: 0, auto_categorized: 0 });
     } catch (err) {
       toast.error((err as Error).message || "Error al importar el CSV");
     } finally {
@@ -268,6 +274,7 @@ function StepMap({ file, preview, accounts, onBack, onPreviewChange, onPlan }: S
   });
   const [loading, setLoading] = useState(false);
   const [rereading, setRereading] = useState(false);
+  const [cleanConcepts, setCleanConcepts] = useState(true);
 
   const autoMapped = Boolean(
     suggested?.date_col && suggested?.concept_col && suggested?.amount_col
@@ -311,6 +318,7 @@ function StepMap({ file, preview, accounts, onBack, onPreviewChange, onPlan }: S
       decimal_sep: mapping.decimal_sep ?? "auto",
       sign_convention: mapping.sign_convention ?? "signed",
       has_header: preview.has_header,
+      clean_concepts: cleanConcepts,
     };
     try {
       const plan = await api.transactions.csvImportPreview(file, accountIdNum, built);
@@ -458,6 +466,20 @@ function StepMap({ file, preview, accounts, onBack, onPreviewChange, onPlan }: S
           </SelectContent>
         </Select>
       </div>
+
+      <label className="flex items-start gap-2 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-primary"
+          checked={cleanConcepts}
+          onChange={(e) => setCleanConcepts(e.target.checked)}
+        />
+        <span>
+          Limpiar los conceptos del banco: recorta lo que va delante del comercio
+          (<code className="font-mono">COMPRA TARJ. 5402…</code>) y lo guarda en la
+          descripción. Podrás verlo en el paso siguiente.
+        </span>
+      </label>
 
       <div className="flex justify-between gap-2 pt-1">
         <Button variant="outline" size="sm" onClick={onBack}>
@@ -617,6 +639,85 @@ function StepReview({ file, plan, onBack, onImport }: Step3Props) {
   );
 }
 
+// ── Rule suggestions shown with the results ──────────────────────────────────
+
+/**
+ * Una fila por concepto que entró sin categoría. Crear la regla no recategoriza
+ * lo ya importado: sirve para que la próxima importación lo clasifique sola.
+ */
+function RuleSuggestion({ suggestion }: { suggestion: UncategorizedConcept }) {
+  const { data: categories = [] } = useCategories();
+  const createRule = useCreateCategorizationRule();
+  const [pattern, setPattern] = useState(suggestion.suggested_pattern);
+  const [categoryId, setCategoryId] = useState(NONE);
+  const [created, setCreated] = useState(false);
+
+  const options = categories.filter(
+    (c) => c.parent_id === null && String(c.type) === String(suggestion.type),
+  );
+
+  async function handleCreate() {
+    if (categoryId === NONE || !pattern.trim()) return;
+    try {
+      await createRule.mutateAsync({
+        pattern: pattern.trim(),
+        category_id: Number(categoryId),
+        subcategory_id: null,
+        priority: 0,
+        enabled: true,
+      });
+      setCreated(true);
+      toast.success(`Regla creada para "${pattern.trim()}"`);
+    } catch (err) {
+      toast.error((err as Error).message || "No se pudo crear la regla");
+    }
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="truncate text-xs text-muted-foreground" title={suggestion.concept}>
+        <span className="tabular-nums">×{suggestion.count}</span> {suggestion.concept}
+      </p>
+      <div className="flex items-center gap-1.5">
+        <Input
+          value={pattern}
+          onChange={(e) => setPattern(e.target.value)}
+          disabled={created}
+          className="h-7 flex-1 text-xs"
+          aria-label={`Texto a detectar para ${suggestion.concept}`}
+        />
+        <Select value={categoryId} onValueChange={setCategoryId} disabled={created}>
+          <SelectTrigger className="h-7 w-40 text-xs" aria-label={`Categoría para ${suggestion.concept}`}>
+            <SelectValue placeholder="Categoría…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NONE}>— Categoría —</SelectItem>
+            {options.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {created ? (
+          <span className="flex h-7 w-[86px] items-center justify-center gap-1 text-xs text-income">
+            <Check className="h-3.5 w-3.5" />
+            Creada
+          </span>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 w-[86px] text-xs"
+            disabled={categoryId === NONE || !pattern.trim() || createRule.isPending}
+            onClick={handleCreate}
+          >
+            Crear regla
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Step 4 — Results ──────────────────────────────────────────────────────────
 
 interface Step4Props {
@@ -640,6 +741,12 @@ function StepResult({ result, onClose }: Step4Props) {
           <p className="text-sm font-medium">
             {result.imported} movimiento{result.imported !== 1 ? "s" : ""} importado{result.imported !== 1 ? "s" : ""}
           </p>
+          {result.auto_categorized > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {result.auto_categorized} categorizado
+              {result.auto_categorized !== 1 ? "s" : ""} por tus reglas
+            </p>
+          )}
           {result.duplicates > 0 && (
             <p className="text-xs text-muted-foreground">
               {result.duplicates} ya {result.duplicates !== 1 ? "estaban" : "estaba"} en la app
@@ -654,16 +761,30 @@ function StepResult({ result, onClose }: Step4Props) {
       </div>
 
       {result.uncategorized > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-          <Tag className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-          <div className="flex-1 space-y-2">
+        <div className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+          <div className="flex items-start gap-3">
+            <Tag className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
             <p className="text-sm">
-              <strong>{result.uncategorized}</strong> movimiento{result.uncategorized !== 1 ? "s" : ""} entr{result.uncategorized !== 1 ? "aron" : "ó"} sin categoría. Puedes asignarlas a mano o crear reglas para la próxima importación.
+              <strong>{result.uncategorized}</strong> movimiento{result.uncategorized !== 1 ? "s" : ""} entr{result.uncategorized !== 1 ? "aron" : "ó"} sin categoría.
             </p>
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={goToUncategorized}>
-              Ver movimientos sin categoría →
-            </Button>
           </div>
+
+          {(result.uncategorized_concepts ?? []).length > 0 && (
+            <div className="space-y-2.5 border-t border-amber-500/20 pt-3">
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Wand2 className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                Crea una regla y la próxima importación los clasificará sola. No
+                recategoriza los que acaban de entrar.
+              </p>
+              {(result.uncategorized_concepts ?? []).map((suggestion) => (
+                <RuleSuggestion key={suggestion.concept} suggestion={suggestion} />
+              ))}
+            </div>
+          )}
+
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={goToUncategorized}>
+            Ver movimientos sin categoría →
+          </Button>
         </div>
       )}
 

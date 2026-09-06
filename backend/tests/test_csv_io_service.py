@@ -821,3 +821,128 @@ def test_import_mapped_writes_the_good_rows_and_reports_the_bad(session: Session
     assert result.imported == 1
     assert result.skipped == 1
     assert len(session.exec(select(Transaction)).all()) == 1
+
+
+# ── Limpieza de conceptos ─────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("raw", "concept", "prefix"),
+    [
+        (
+            "COMPRA TARJ. 5555XXXXXXXX1234 MERCADONA GRAN VIA-VALENCIA",
+            "MERCADONA GRAN VIA-VALENCIA",
+            "COMPRA TARJ. 5555XXXXXXXX1234",
+        ),
+        ("PAGO BIZUM ANA L.", "ANA L.", "PAGO BIZUM"),
+        ("COMPRA BIZUM GIMNASIO EJEMPLO", "GIMNASIO EJEMPLO", "COMPRA BIZUM"),
+        ("TRANSFERENCIA A MARIA ENCARNACION", "MARIA ENCARNACION", "TRANSFERENCIA A"),
+        ("RECIBO DE IBERDROLA", "IBERDROLA", "RECIBO DE"),
+        ("ADEUDO POR DOMICILIACION VODAFONE", "VODAFONE", "ADEUDO POR DOMICILIACION"),
+        # Sin prefijo reconocible se deja tal cual, solo con los espacios normalizados.
+        ("NOMINA  SEPTIEMBRE", "NOMINA SEPTIEMBRE", None),
+        # El prefijo solo, sin comercio detrás, se conserva entero.
+        ("TRANSFERENCIA A", "TRANSFERENCIA A", None),
+    ],
+)
+def test_clean_concept(raw: str, concept: str, prefix: str | None) -> None:
+    assert service._clean_concept(raw, clean=True) == (concept, prefix)
+
+
+def test_clean_concept_can_be_switched_off() -> None:
+    raw = "COMPRA TARJ. 5555XXXXXXXX1234 CONSUM"
+
+    assert service._clean_concept(raw, clean=False) == (raw, None)
+
+
+def test_import_mapped_keeps_the_prefix_in_the_description(session: Session) -> None:
+    """Limpiar el concepto no debe perder nada de la línea original."""
+    bank, _, _, _ = _setup(session)
+    raw = (
+        b"Fecha;Concepto;Importe;Ref\n"
+        b"01/06/2026;COMPRA TARJ. 5555XXXXXXXX1234 CONSUM;-20,00;5555__1234\n"
+    )
+
+    service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping(description_col="Ref"))
+
+    tx = session.exec(select(Transaction)).one()
+    assert tx.concept == "CONSUM"
+    assert tx.description == "COMPRA TARJ. 5555XXXXXXXX1234 · 5555__1234"
+
+
+def test_import_mapped_without_cleaning_keeps_the_raw_concept(session: Session) -> None:
+    bank, _, _, _ = _setup(session)
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;COMPRA TARJ. 5555XXXXXXXX1234 CONSUM;-20,00\n"
+
+    service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping(clean_concepts=False))
+
+    tx = session.exec(select(Transaction)).one()
+    assert tx.concept == "COMPRA TARJ. 5555XXXXXXXX1234 CONSUM"
+    assert tx.description is None
+
+
+# ── Reglas: recuento y sugerencias ────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("concept", "expected"),
+    [
+        ("MERCADONA GRAN VIA-VALENCIA", "MERCADONA"),
+        ("WWW.AMAZON-LUXEMBOURG", "WWW.AMAZON-LUXEMBOURG"),
+        # Una primera palabra muy corta no distingue nada por sí sola.
+        ("EL CORTE INGLES", "EL CORTE"),
+        ("", ""),
+    ],
+)
+def test_rule_pattern(concept: str, expected: str) -> None:
+    assert service._rule_pattern(concept) == expected
+
+
+def test_import_mapped_counts_what_the_rules_categorized(session: Session) -> None:
+    bank, _, food, _ = _setup(session)
+    session.add(CategorizationRule(pattern="Consum", category_id=_require_id(food.id)))
+    session.commit()
+    raw = (
+        b"Fecha;Concepto;Importe\n"
+        b"01/06/2026;COMPRA TARJ. 5555XXXXXXXX1234 CONSUM;-20,00\n"
+        b"02/06/2026;Otra cosa;-5,00\n"
+    )
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert result.imported == 2
+    assert result.auto_categorized == 1
+    assert result.uncategorized == 1
+
+
+def test_import_mapped_suggests_rules_for_what_stayed_uncategorized(session: Session) -> None:
+    """Los conceptos repetidos van primero: son los que más rinde automatizar."""
+    bank, _, _, _ = _setup(session)
+    raw = (
+        b"Fecha;Concepto;Importe\n"
+        b"01/06/2026;COMPRA TARJ. 5555XXXXXXXX1234 CONSUM CENTRO;-20,00\n"
+        b"02/06/2026;COMPRA TARJ. 5555XXXXXXXX1234 CONSUM CENTRO;-11,00\n"
+        b"03/06/2026;COMPRA TARJ. 5555XXXXXXXX1234 MERCADONA CENTRO;-35,00\n"
+    )
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    suggestions = result.uncategorized_concepts
+    assert [(s.concept, s.count, s.suggested_pattern) for s in suggestions] == [
+        ("CONSUM CENTRO", 2, "CONSUM"),
+        ("MERCADONA CENTRO", 1, "MERCADONA"),
+    ]
+    assert suggestions[0].type == TransactionType.expense
+
+
+def test_import_mapped_suggests_nothing_when_everything_got_a_category(
+    session: Session,
+) -> None:
+    bank, _, food, _ = _setup(session)
+    session.add(CategorizationRule(pattern="Consum", category_id=_require_id(food.id)))
+    session.commit()
+    raw = b"Fecha;Concepto;Importe\n01/06/2026;COMPRA TARJ. 5555XXXXXXXX1234 CONSUM;-20,00\n"
+
+    result = service.import_csv_mapped(session, raw, _require_id(bank.id), _mapping())
+
+    assert result.uncategorized_concepts == []

@@ -4,6 +4,7 @@ import codecs
 import csv
 import datetime as dt
 import io
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -22,6 +23,7 @@ from app.schemas.csv import (
     CsvPreviewResult,
     ImportPreviewRow,
     SuggestedMapping,
+    UncategorizedConcept,
 )
 from app.schemas.transaction import TransactionCreate
 from app.services import transaction as transaction_service
@@ -276,6 +278,27 @@ _AMOUNT_BLACKLIST = (
     "currency",
 )
 
+# Boilerplate Spanish banks put before the merchant or the counterparty. It is
+# trimmed off the concept and kept in the description, so the movements table
+# reads "MERCADONA GRAN VIA-VALENCIA" instead of the masked card number first.
+_CONCEPT_PREFIX = re.compile(
+    r"^(?:"
+    r"COMPRA\s+TARJ(?:ETA)?\.?\s+[0-9X*][0-9X*_]{3,}"
+    r"|(?:PAGO|COMPRA|ABONO)\s+BIZUM"
+    r"|BIZUM\s+(?:A|DE)"
+    r"|TRANSFERENCIA\s+(?:A\s+FAVOR\s+DE|A|DE)"
+    r"|TRANSF\.?\s+(?:A|DE)"
+    r"|ADEUDO\s+POR\s+DOMICILIACION(?:\s+DE)?"
+    r"|RECIBO(?:\s+DE)?"
+    r"|PAGO\s+(?:EN|DE)"
+    r"|COMPRA\s+EN"
+    r")\s+",
+    re.IGNORECASE,
+)
+
+# How many distinct uncategorized concepts the result offers to turn into rules.
+_RULE_SUGGESTIONS = 8
+
 # Values a mapped type column may hold, in every wording banks use.
 _TYPE_ALIASES: dict[str, TransactionType] = {
     **_LABEL_TYPE,
@@ -404,10 +427,15 @@ def import_csv_mapped(
                 continue
         assert row.data is not None
         try:
-            pending.append(transaction_service.build_transaction(session, row.data))
+            built = transaction_service.build_transaction(session, row.data)
         except Exception as exc:
             result.skipped += 1
             result.errors.append(f"Fila {row.line}: {exc}")
+            continue
+        # The CSV carried no category but a rule filled one in.
+        if row.data.category_id is None and built.category_id is not None:
+            result.auto_categorized += 1
+        pending.append(built)
 
     try:
         created = transaction_repo.create_many(session, pending)
@@ -419,6 +447,7 @@ def import_csv_mapped(
     result.imported = len(created)
     # Rules may have categorized rows on the way in, so ask the saved movements.
     result.uncategorized = sum(1 for tx in created if tx.category_id is None)
+    result.uncategorized_concepts = _rule_suggestions(created)
     return result
 
 
@@ -767,9 +796,13 @@ def _parse_row(
         if mapping.type_col:
             tx_type = _resolve_type(row.get(mapping.type_col, ""), tx_type)
 
-        description: str | None = None
-        if mapping.description_col:
-            description = row.get(mapping.description_col) or None
+        concept, prefix = _clean_concept(row.get(mapping.concept_col, ""), mapping.clean_concepts)
+
+        mapped_description = (
+            row.get(mapping.description_col, "").strip() if mapping.description_col else ""
+        )
+        # The trimmed prefix goes here, so nothing of the original line is lost.
+        description = " · ".join(part for part in (prefix, mapped_description) if part) or None
 
         category_id: int | None = None
         subcategory_id: int | None = None
@@ -785,7 +818,7 @@ def _parse_row(
             data=TransactionCreate(
                 date=date,
                 type=tx_type,
-                concept=row.get(mapping.concept_col, "").strip() or "(Sin concepto)",
+                concept=concept,
                 description=description,
                 amount=amount,
                 account_id=account_id,
@@ -795,6 +828,60 @@ def _parse_row(
         )
     except Exception as exc:
         return _ParsedRow(line=line, error=str(exc))
+
+
+def _clean_concept(raw: str, clean: bool) -> tuple[str, str | None]:
+    """Split a bank concept into the readable part and the boilerplate prefix.
+
+    Statements bury the merchant behind the kind of movement and a masked card
+    number. The prefix is returned separately so the caller can keep it in the
+    description: nothing from the original line is thrown away.
+    """
+    concept = " ".join(raw.split())
+    if not clean:
+        return concept or "(Sin concepto)", None
+
+    match = _CONCEPT_PREFIX.match(concept)
+    if match is None:
+        return concept or "(Sin concepto)", None
+
+    rest = concept[match.end() :].strip()
+    if not rest:
+        # The whole concept was the prefix: better to keep it than to blank it.
+        return concept, None
+    return rest, match.group(0).strip()
+
+
+def _rule_pattern(concept: str) -> str:
+    """Suggest the text a categorization rule should look for.
+
+    The first word is usually the brand ("MERCADONA GRAN VIA-VALENCIA"), which
+    is what makes a rule reusable. Rules match by substring, so a short pattern
+    keeps working when the branch or the city changes.
+    """
+    words = concept.split()
+    if not words:
+        return concept
+    if len(words[0]) < 4 and len(words) > 1:
+        return f"{words[0]} {words[1]}"
+    return words[0]
+
+
+def _rule_suggestions(transactions: list[Transaction]) -> list[UncategorizedConcept]:
+    """Group the movements left without a category by concept, most frequent first."""
+    grouped: dict[tuple[str, TransactionType], int] = Counter(
+        (tx.concept, tx.type) for tx in transactions if tx.category_id is None
+    )
+    ranked = sorted(grouped.items(), key=lambda item: (-item[1], item[0][0]))
+    return [
+        UncategorizedConcept(
+            concept=concept,
+            type=tx_type,
+            count=count,
+            suggested_pattern=_rule_pattern(concept),
+        )
+        for (concept, tx_type), count in ranked[:_RULE_SUGGESTIONS]
+    ]
 
 
 def _signature(

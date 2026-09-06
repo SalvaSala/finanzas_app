@@ -50,6 +50,7 @@ export type ImportResult = components["schemas"]["ImportResult"];
 export type CsvPreviewResult = components["schemas"]["CsvPreviewResult"];
 export type CsvImportMappedResult = components["schemas"]["CsvImportMappedResult"];
 export type SuggestedMapping = components["schemas"]["SuggestedMapping"];
+export type UncategorizedConcept = components["schemas"]["UncategorizedConcept"];
 export type CsvImportPreview = components["schemas"]["CsvImportPreview"];
 export type ImportPreviewRow = components["schemas"]["ImportPreviewRow"];
 
@@ -65,6 +66,7 @@ export interface ColumnMapping {
   sign_convention?: string;  // "signed"
   has_header?: boolean | null;  // null: que lo detecte el backend
   skip_duplicates?: boolean;   // no reimportar lo que ya está guardado
+  clean_concepts?: boolean;    // recortar el prefijo que antepone el banco
 }
 
 export interface ConceptSuggestion {

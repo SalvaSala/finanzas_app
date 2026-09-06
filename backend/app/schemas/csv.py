@@ -50,6 +50,18 @@ class ColumnMapping(BaseModel):
     # Leave out rows already stored. Bank exports go by date range and users
     # overlap them, so re-importing must not duplicate what is already there.
     skip_duplicates: bool = True
+    # Trim the boilerplate banks put before the merchant ("COMPRA TARJ. <card>")
+    # and keep it in the description instead.
+    clean_concepts: bool = True
+
+
+class UncategorizedConcept(BaseModel):
+    """A concept that came in without a category, and a rule that would fix it."""
+
+    concept: str
+    type: TransactionType
+    count: int
+    suggested_pattern: str
 
 
 class CsvImportMappedResult(BaseModel):
@@ -59,6 +71,10 @@ class CsvImportMappedResult(BaseModel):
     errors: list[str]
     # Rows left out because the movement was already stored.
     duplicates: int = 0
+    # Rows an existing rule categorized on the way in.
+    auto_categorized: int = 0
+    # The concepts behind `uncategorized`, so the user can turn them into rules.
+    uncategorized_concepts: list[UncategorizedConcept] = Field(default_factory=list)
 
 
 class ImportPreviewRow(BaseModel):

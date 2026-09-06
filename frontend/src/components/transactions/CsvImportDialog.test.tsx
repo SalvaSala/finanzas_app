@@ -15,6 +15,12 @@ vi.mock("sonner", () => ({
 
 const accounts = [{ id: 1, name: "Banco", type: "bank" }] as AccountRead[];
 
+const categories = [
+  { id: 10, name: "Alimentación", type: "expense", parent_id: null, color: null, icon: null },
+  { id: 11, name: "Supermercado", type: "expense", parent_id: 10, color: null, icon: null },
+  { id: 20, name: "Salario", type: "income", parent_id: null, color: null, icon: null },
+];
+
 const preview: CsvPreviewResult = {
   encoding: "utf-8",
   separator: ";",
@@ -134,11 +140,11 @@ let nativeImportSpy: MockInstance<typeof api.transactions.importCsv>;
 let planSpy: MockInstance<typeof api.transactions.csvImportPreview>;
 
 beforeEach(() => {
-  mockFetch({ "/api/accounts": accounts });
+  mockFetch({ "/api/accounts": accounts, "/api/categories": categories });
   previewSpy = vi.spyOn(api.transactions, "csvPreview").mockResolvedValue(preview);
   importSpy = vi
     .spyOn(api.transactions, "csvImportMapped")
-    .mockResolvedValue({ imported: 2, skipped: 0, uncategorized: 0, duplicates: 0, errors: [] });
+    .mockResolvedValue({ imported: 2, skipped: 0, uncategorized: 0, duplicates: 0, auto_categorized: 0, errors: [] });
   nativeImportSpy = vi
     .spyOn(api.transactions, "importCsv")
     .mockResolvedValue({ imported: 3, skipped: 0, errors: [] });
@@ -333,7 +339,7 @@ describe("CsvImportDialog — paso 4: resultado", () => {
   });
 
   it("usa el singular con un solo movimiento", async () => {
-    importSpy.mockResolvedValue({ imported: 1, skipped: 0, uncategorized: 0, duplicates: 0, errors: [] });
+    importSpy.mockResolvedValue({ imported: 1, skipped: 0, uncategorized: 0, duplicates: 0, auto_categorized: 0, errors: [] });
     const { user } = setup();
     await importAndReachResult(user);
 
@@ -341,7 +347,7 @@ describe("CsvImportDialog — paso 4: resultado", () => {
   });
 
   it("informa de las filas omitidas por error", async () => {
-    importSpy.mockResolvedValue({ imported: 1, skipped: 3, uncategorized: 0, duplicates: 0, errors: [] });
+    importSpy.mockResolvedValue({ imported: 1, skipped: 3, uncategorized: 0, duplicates: 0, auto_categorized: 0, errors: [] });
     const { user } = setup();
     await importAndReachResult(user);
 
@@ -351,7 +357,7 @@ describe("CsvImportDialog — paso 4: resultado", () => {
   });
 
   it("informa de los que ya estaban guardados", async () => {
-    importSpy.mockResolvedValue({ imported: 1, skipped: 0, uncategorized: 0, duplicates: 4, errors: [] });
+    importSpy.mockResolvedValue({ imported: 1, skipped: 0, uncategorized: 0, duplicates: 4, auto_categorized: 0, errors: [] });
     const { user } = setup();
     await importAndReachResult(user);
 
@@ -359,7 +365,7 @@ describe("CsvImportDialog — paso 4: resultado", () => {
   });
 
   it("ofrece revisar los movimientos sin categoría", async () => {
-    importSpy.mockResolvedValue({ imported: 5, skipped: 0, uncategorized: 2, duplicates: 0, errors: [] });
+    importSpy.mockResolvedValue({ imported: 5, skipped: 0, uncategorized: 2, duplicates: 0, auto_categorized: 0, errors: [] });
     const { user } = setup();
     await importAndReachResult(user);
 
@@ -374,6 +380,7 @@ describe("CsvImportDialog — paso 4: resultado", () => {
       skipped: 2,
       uncategorized: 0,
       duplicates: 0,
+      auto_categorized: 0,
       errors: ["Fila 2: Fecha inválida", "Fila 5: Importe inválido"],
     });
     const { user } = setup();
@@ -411,7 +418,7 @@ describe("CsvImportDialog — detección automática", () => {
 
     expect(await screen.findByRole("columnheader", { name: "Columna 1" })).toBeInTheDocument();
     expect(screen.getByText("barra vertical (|)")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /primera fila/ })).not.toBeChecked();
   });
 
   it("relee el fichero si se corrige la detección de cabecera", async () => {
@@ -420,7 +427,7 @@ describe("CsvImportDialog — detección automática", () => {
     await upload(user);
     await screen.findByText("Mapear columnas");
 
-    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("checkbox", { name: /primera fila/ }));
 
     await waitFor(() => expect(previewSpy).toHaveBeenCalledTimes(2));
     expect(previewSpy.mock.calls[1][1]).toBe(true);
@@ -461,5 +468,99 @@ describe("CsvImportDialog — detección automática", () => {
     await waitFor(() => expect(nativeImportSpy).toHaveBeenCalled());
     expect(importSpy).not.toHaveBeenCalled();
     expect(await screen.findByText(byWholeText("3 movimientos importados"))).toBeInTheDocument();
+  });
+});
+
+describe("CsvImportDialog — reglas desde el resultado", () => {
+  const conConceptos = {
+    imported: 4,
+    skipped: 0,
+    uncategorized: 4,
+    duplicates: 0,
+    auto_categorized: 2,
+    errors: [],
+    uncategorized_concepts: [
+      {
+        concept: "CONSUM CENTRO-VALENCIA",
+        type: "expense" as const,
+        count: 3,
+        suggested_pattern: "CONSUM",
+      },
+      {
+        concept: "MERCADONA GRAN VIA-VALENCIA",
+        type: "expense" as const,
+        count: 1,
+        suggested_pattern: "MERCADONA",
+      },
+    ],
+  };
+
+  it("dice cuántos categorizaron las reglas existentes", async () => {
+    importSpy.mockResolvedValue(conConceptos);
+    const { user } = setup();
+    await goToReview(user);
+    await user.click(screen.getByRole("button", { name: /Importar/ }));
+
+    expect(
+      await screen.findByText(byWholeText("2 categorizados por tus reglas")),
+    ).toBeInTheDocument();
+  });
+
+  it("propone una regla por concepto, con el patrón ya rellenado", async () => {
+    importSpy.mockResolvedValue(conConceptos);
+    const { user } = setup();
+    await goToReview(user);
+    await user.click(screen.getByRole("button", { name: /Importar/ }));
+
+    const pattern = await screen.findByLabelText(
+      "Texto a detectar para CONSUM CENTRO-VALENCIA",
+    );
+    expect(pattern).toHaveValue("CONSUM");
+    expect(screen.getByText(byWholeText("×3 CONSUM CENTRO-VALENCIA"))).toBeInTheDocument();
+    // Sin categoría elegida todavía no se puede crear.
+    expect(screen.getAllByRole("button", { name: "Crear regla" })[0]).toBeDisabled();
+  });
+
+  it("crea la regla con el patrón y la categoría elegidos", async () => {
+    importSpy.mockResolvedValue(conConceptos);
+    const createSpy = vi
+      .spyOn(api.categorizationRules, "create")
+      .mockResolvedValue({ id: 1, pattern: "CONSUM", category_id: 10, subcategory_id: null, priority: 0, enabled: true });
+    const { user } = setup();
+    await goToReview(user);
+    await user.click(screen.getByRole("button", { name: /Importar/ }));
+
+    await user.click(
+      await screen.findByLabelText("Categoría para CONSUM CENTRO-VALENCIA"),
+    );
+    const listbox = await screen.findByRole("listbox");
+    await user.click(within(listbox).getByRole("option", { name: "Alimentación" }));
+    await user.click(screen.getAllByRole("button", { name: "Crear regla" })[0]);
+
+    await waitFor(() => expect(createSpy).toHaveBeenCalled());
+    expect(createSpy.mock.calls[0][0]).toMatchObject({
+      pattern: "CONSUM",
+      category_id: 10,
+      enabled: true,
+    });
+    expect(await screen.findByText("Creada")).toBeInTheDocument();
+    createSpy.mockRestore();
+  });
+
+  it("solo ofrece categorías del tipo del movimiento", async () => {
+    importSpy.mockResolvedValue(conConceptos);
+    const { user } = setup();
+    await goToReview(user);
+    await user.click(screen.getByRole("button", { name: /Importar/ }));
+
+    await user.click(
+      await screen.findByLabelText("Categoría para CONSUM CENTRO-VALENCIA"),
+    );
+    const listbox = await screen.findByRole("listbox");
+
+    expect(within(listbox).getByRole("option", { name: "Alimentación" })).toBeInTheDocument();
+    // "Salario" es de ingresos y "Supermercado" una subcategoría: ninguna encaja.
+    expect(within(listbox).queryByRole("option", { name: "Salario" })).not.toBeInTheDocument();
+    expect(within(listbox).queryByRole("option", { name: "Supermercado" })).not.toBeInTheDocument();
   });
 });
