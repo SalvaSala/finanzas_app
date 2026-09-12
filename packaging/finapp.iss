@@ -7,7 +7,7 @@
 ;
 ; Requisito previo: haber ejecutado build_windows.ps1 antes (genera dist\FinApp).
 ; Compilar DESDE LA RAÍZ del repositorio:
-;     iscc packaging\finapp.iss /DAppVersion=1.0.0
+;     iscc packaging\finapp.iss /DAppVersion=1.1.0
 ;
 ; La versión se pasa por línea de órdenes a propósito: el número vive en
 ; backend\pyproject.toml y no queremos una sexta copia que se quede vieja.

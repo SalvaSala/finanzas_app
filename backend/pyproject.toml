@@ -1,6 +1,6 @@
 [project]
 name = "finapp-backend"
-version = "1.0.0"
+version = "1.1.0"
 description = "FinApp backend — API REST de finanzas personales (FastAPI)"
 requires-python = ">=3.11"
 dependencies = [

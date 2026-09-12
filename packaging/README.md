@@ -103,13 +103,13 @@ de la CI (Ubuntu 22.04) y no de la máquina de desarrollo.
 
 Windows tiene el mismo problema que Linux —el `.exe` y `_internal\` son
 inseparables— pero no existe un equivalente al AppImage. La solución idiomática es
-un **instalador**: `packaging/finapp.iss` produce un `FinApp-1.0.0-setup.exe` que
+un **instalador**: `packaging/finapp.iss` produce un `FinApp-1.1.0-setup.exe` que
 copia todo a la carpeta de programas del usuario y deja acceso directo en el menú
 Inicio y desinstalador en el panel de control.
 
 ```powershell
 powershell -File packaging\build_windows.ps1    # hace las dos cosas
-iscc packaging\finapp.iss /DAppVersion=1.0.0    # solo el instalador
+iscc packaging\finapp.iss /DAppVersion=1.1.0    # solo el instalador
 ```
 
 Tres decisiones que conviene conocer antes de tocar el `.iss`:
@@ -134,7 +134,7 @@ firma de código de pago.
 | Sistema | Fichero | Cómo se usa |
 |---|---|---|
 | Linux | `FinApp-x86_64.AppImage` | `chmod +x` y ejecutar; o doble clic. |
-| Windows | `FinApp-1.0.0-setup.exe` | Doble clic → asistente de instalación. |
+| Windows | `FinApp-1.1.0-setup.exe` | Doble clic → asistente de instalación. |
 
 El zip de la carpeta suelta (`FinApp-windows-x86_64.zip`) se sigue generando como
 artefacto del run —sirve para depurar y para quien la quiera portable— pero **no**
