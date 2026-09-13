@@ -51,8 +51,23 @@ Para revisar el estado: `claude mcp list`.
 
 ## Skills
 
-El proyecto usa el ecosistema de skills de **skills.sh**, instaladas en `.agents/skills/`
-(`find-skills`, `frontend-design`, `shadcn`). Antes de ejecutar cualquier tarea (crear
+Las skills del proyecto están en **`.claude/skills/`**, que es la única ruta de proyecto
+que lee Claude Code (no lee `.agents/skills/`, la carpeta por defecto de skills.sh):
+
+| Skill | Origen |
+|---|---|
+| `frontend-design` | `anthropics/skills` (skills.sh) |
+| `shadcn` | `shadcn/ui` (skills.sh) |
+| `explain-code` | propia del proyecto |
+
+`find-skills` (`vercel-labs/skills`) está instalada a nivel **global** en
+`~/.claude/skills/`, porque sirve en cualquier proyecto.
+
+Para instalar o actualizar una skill de skills.sh, indica Claude Code como destino y
+copia en vez de enlazar: `npx skills add <origen> -a claude-code --copy`. Sin `-a
+claude-code` se instala en `.agents/skills/` y Claude Code no la ve.
+
+Antes de ejecutar cualquier tarea (crear
 componentes, escribir tests, revisar código, crear endpoints, refactorizar, etc.),
 comprueba si existe alguna skill instalada o disponible en el ecosistema
 (`npx skills find`) que pueda ayudar a hacer la tarea mejor. Si es relevante, úsala;

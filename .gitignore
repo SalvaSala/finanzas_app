@@ -40,6 +40,9 @@ Thumbs.db
 # ─── Notas personales (no versionar) ────────────────
 COMO-ARRANCAR.txt
 
+# ─── Claude Code: ajustes personales (los compartidos sí se versionan) ──
+.claude/settings.local.json
+
 # ─── Capturas/artefactos de Playwright MCP ──────────
 .playwright-mcp/
 
