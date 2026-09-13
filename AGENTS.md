@@ -56,12 +56,14 @@ que lee Claude Code (no lee `.agents/skills/`, la carpeta por defecto de skills.
 
 | Skill | Origen |
 |---|---|
-| `frontend-design` | `anthropics/skills` (skills.sh) |
 | `shadcn` | `shadcn/ui` (skills.sh) |
 | `explain-code` | propia del proyecto |
 
-`find-skills` (`vercel-labs/skills`) está instalada a nivel **global** en
-`~/.claude/skills/`, porque sirve en cualquier proyecto.
+A nivel **global** (`~/.claude/skills/`) están `find-skills` (`vercel-labs/skills`) e
+`interface-design`, esta con sus commands `/interface-design:*`. El diseño de FinApp está
+recogido en **`.interface-design/system.md`**: la UI nueva debe seguirlo, no proponer otra
+dirección. `frontend-design` se quitó a propósito: empuja a diseños llamativos y distintos
+en cada pantalla, lo contrario de lo que necesita una app ya diseñada.
 
 Para instalar o actualizar una skill de skills.sh, indica Claude Code como destino y
 copia en vez de enlazar: `npx skills add <origen> -a claude-code --copy`. Sin `-a
