@@ -21,9 +21,12 @@ backend/dist/
 *.manifest
 
 # ─── Base de datos local y datos ────────────────────
-data/*.db
-data/*.sqlite
-data/*.sqlite3
+# Se ignora la carpeta entera, no extensión por extensión: aquí viven datos
+# financieros reales y el repositorio es público. Listar extensiones dejaba
+# fuera copias como "finapp.db.bak-antes-limpieza", exports CSV o volcados
+# sueltos. La carpeta no necesita versionarse: la crea app/core/paths.py al
+# arrancar, y la BD de ejemplo la genera scripts/create_example_db.py.
+data/
 
 # ─── Entornos y secretos ────────────────────────────
 .env
