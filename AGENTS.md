@@ -59,11 +59,17 @@ que lee Claude Code (no lee `.agents/skills/`, la carpeta por defecto de skills.
 | `shadcn` | `shadcn/ui` (skills.sh) |
 | `explain-code` | propia del proyecto |
 
-A nivel **global** (`~/.claude/skills/`) están `find-skills` (`vercel-labs/skills`) e
-`interface-design`, esta con sus commands `/interface-design:*`. El diseño de FinApp está
-recogido en **`.interface-design/system.md`**: la UI nueva debe seguirlo, no proponer otra
+A nivel **global** (`~/.claude/skills/`) están `find-skills` (`vercel-labs/skills`),
+`interface-design` —esta con sus commands `/interface-design:*`— y `archify`
+(`tt-a1i/archify`). El diseño de FinApp está recogido en
+**`.interface-design/system.md`**: la UI nueva debe seguirlo, no proponer otra
 dirección. `frontend-design` se quitó a propósito: empuja a diseños llamativos y distintos
 en cada pantalla, lo contrario de lo que necesita una app ya diseñada.
+
+`archify` genera diagramas (arquitectura, secuencia, flujo, datos, estados) como HTML
+autocontenido. Los del proyecto viven en **`docs/arquitectura/`**, con el JSON fuente
+al lado del HTML: al cambiar la arquitectura hay que regenerarlos, porque el diagrama
+es una foto y no se actualiza solo. Instrucciones en `docs/arquitectura/README.md`.
 
 Para instalar o actualizar una skill de skills.sh, indica Claude Code como destino y
 copia en vez de enlazar: `npx skills add <origen> -a claude-code --copy`. Sin `-a
@@ -128,6 +134,7 @@ finapp/
 ├── README.md
 ├── backend/   app/{core,models,schemas,repositories,services,api} + alembic/ + tests/
 ├── frontend/  src/{api,hooks,components,pages,lib,theme}
+├── docs/      arquitectura/ (diagramas archify: JSON fuente + HTML generado)
 ├── scripts/   utilidades (p.ej. create_example_db.py: BD ficticia de demo en data/example.db)
 ├── data/      finapp.db (SQLite local)
 └── packaging/ specs PyInstaller/pywebview

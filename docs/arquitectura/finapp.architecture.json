@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "FinApp · mapa general",
+    "output": "finapp-arquitectura.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1240,
+      700
+    ],
+    "views": [
+      {
+        "id": "peticion",
+        "label": "Camino de un dato",
+        "focus": [
+          "user",
+          "ui",
+          "client",
+          "api",
+          "services",
+          "repos",
+          "db"
+        ],
+        "note": "Sigue un dato desde que el usuario lo pide hasta que sale de la base de datos."
+      },
+      {
+        "id": "capas",
+        "label": "Capas del backend",
+        "focus": [
+          "api",
+          "services",
+          "repos",
+          "db"
+        ],
+        "note": "La regla de arquitectura: cada capa solo habla con la siguiente."
+      },
+      {
+        "id": "arranque",
+        "label": "Arranque",
+        "focus": [
+          "api",
+          "dist",
+          "alembic",
+          "db"
+        ],
+        "note": "Lo que ocurre al abrir el instalable: migrar la base y servir el frontend compilado."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Usuario",
+      "sublabel": "abre FinApp",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "Interfaz React",
+      "sublabel": "Vite · Tailwind · shadcn",
+      "pos": [
+        305,
+        120
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "client.ts",
+      "sublabel": "tipos desde OpenAPI",
+      "pos": [
+        570,
+        120
+      ],
+      "size": [
+        130,
+        64
+      ],
+      "tag": "única puerta a la API"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Routers FastAPI",
+      "sublabel": "12 routers bajo /api",
+      "pos": [
+        835,
+        120
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "dist",
+      "type": "frontend",
+      "label": "frontend/dist",
+      "sublabel": "estáticos compilados",
+      "pos": [
+        1100,
+        120
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "services",
+      "type": "backend",
+      "label": "Services",
+      "sublabel": "lógica de negocio",
+      "pos": [
+        835,
+        270
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "repos",
+      "type": "backend",
+      "label": "Repositories",
+      "sublabel": "único acceso a datos",
+      "pos": [
+        835,
+        420
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "finapp.db",
+      "pos": [
+        835,
+        570
+      ],
+      "size": [
+        130,
+        64
+      ],
+      "tag": "carpeta del usuario"
+    },
+    {
+      "id": "alembic",
+      "type": "backend",
+      "label": "Alembic",
+      "sublabel": "migraciones",
+      "pos": [
+        1100,
+        570
+      ],
+      "size": [
+        130,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Ventana de escritorio · pywebview",
+      "wraps": [
+        "ui",
+        "client"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Backend · backend/app",
+      "wraps": [
+        "api",
+        "services",
+        "repos"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-ui",
+      "from": "user",
+      "to": "ui",
+      "label": "ve y captura",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ui-client",
+      "from": "ui",
+      "to": "client",
+      "label": "hooks TanStack Query"
+    },
+    {
+      "id": "client-api",
+      "from": "client",
+      "to": "api",
+      "label": "HTTP /api",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-dist",
+      "from": "api",
+      "to": "dist",
+      "label": "sirve el frontend",
+      "variant": "dashed"
+    },
+    {
+      "id": "api-services",
+      "from": "api",
+      "to": "services",
+      "label": "valida y delega",
+      "labelDy": 24
+    },
+    {
+      "id": "services-repos",
+      "from": "services",
+      "to": "repos",
+      "label": "pide los datos",
+      "labelDy": 24
+    },
+    {
+      "id": "repos-db",
+      "from": "repos",
+      "to": "db",
+      "label": "SQL · agrega en la BD",
+      "labelDy": 24
+    },
+    {
+      "id": "alembic-db",
+      "from": "alembic",
+      "to": "db",
+      "label": "migra al arrancar",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Un solo proceso",
+      "items": [
+        "pywebview abre una ventana nativa sobre 127.0.0.1:8765",
+        "El mismo proceso sirve la API y el frontend compilado",
+        "En desarrollo son dos: Vite :5173 y uvicorn :8000"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Reglas de capas",
+      "items": [
+        "La lógica de negocio vive solo en services/",
+        "Todo el acceso a datos pasa por repositories/",
+        "El frontend presenta y captura, nunca calcula"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Datos",
+      "items": [
+        "La base vive en la carpeta del usuario, fuera del instalable",
+        "Alembic migra sola en el primer arranque",
+        "Las sumas por categoría se resuelven en SQL"
+      ]
+    }
+  ]
+}
