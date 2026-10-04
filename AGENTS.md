@@ -163,7 +163,10 @@ Aunque el instalable se construye al final, el código debe contemplar esto desd
 para no refactorizar después (detalle en `packaging/README.md`):
 - `app/main.py` debe poder **servir el frontend compilado** (`frontend/dist`) en producción, con la API bajo `/api`.
 - Centralizar en `app/core/paths.py` la **resolución de rutas** (desarrollo vs empaquetado, vía `sys._MEIPASS`) y la **ubicación de la base de datos** en la carpeta de datos del usuario del SO.
-- Aplicar **migraciones Alembic en el primer arranque**.
+- Aplicar **migraciones Alembic en el primer arranque** y también **al restaurar una copia
+  de seguridad**: la copia puede venir de una versión anterior y, si no se migra ahí mismo,
+  la BD se queda con el esquema viejo hasta el siguiente arranque y los endpoints que usan
+  tablas nuevas devuelven 500 con la app ya abierta.
 - Punto de entrada de escritorio (FastAPI + pywebview) en `packaging/desktop.py`.
 - **Todo recurso que el backend abra por ruta de fichero debe declararse en
   `packaging/finapp.spec`** (`datas`), o el binario se construye bien y falla al
@@ -213,8 +216,22 @@ para no refactorizar después (detalle en `packaging/README.md`):
 
 - [x] **Fase 1 (MVP):** andamiaje, modelo + migración, datos semilla, CRUD movimientos, dashboard (KPIs + donut + tabla), selector año/mes.
 - [x] **Fase 2:** transferencias, presupuestos, filtros/búsqueda, import/export CSV, gráficos adicionales.
-- [x] **Fase 3:** ~~recurrentes~~, ~~etiquetas~~, ~~objetivos de ahorro~~, ~~reglas de autocategorización~~, ~~modo oscuro~~, ~~informes PDF~~, ~~backup/restore~~, ~~gráficos avanzados~~.
+- [x] **Fase 3:** ~~recurrentes~~, ~~etiquetas~~, ~~objetivos de ahorro~~, ~~reglas de autocategorización~~, ~~modo oscuro~~, ~~informes PDF~~, ~~backup/restore~~, ~~gráficos avanzados~~, ~~KPI de saldo disponible~~.
 - [ ] **Fase 4 (nube):** auth/multiusuario, PostgreSQL, despliegue, sincronización.
+
+## Revisiones pendientes
+
+Cosas detectadas que **no bloquean nada hoy** pero conviene hacer en algún momento:
+
+- **Actions sobre Node 20 (CI).** `actions/checkout@v4`, `actions/setup-node@v4`,
+  `actions/setup-python@v5` y `astral-sh/setup-uv@v5` apuntan a Node 20, ya deprecado: el
+  runner las fuerza a Node 24 y lo avisa en cada run. Subirlas a las versiones que corren
+  en Node 24 quita el aviso de los dos workflows.
+- **`ubuntu-latest` → Ubuntu 26 (19 de octubre de 2026).** Es el que puede romper algo sin
+  avisar: el AppImage de `build.yml` depende de las librerías de sistema de GTK/WebKit, y
+  al cambiar la imagen pueden cambiar de nombre o de versión. Hay que **regenerar el
+  instalable y abrirlo** tras el cambio, no basta con que la CI pase (ver el riesgo de
+  PyGObject más arriba). Si urge, fijar `ubuntu-22.04` mientras se comprueba.
 
 ## Referencias
 

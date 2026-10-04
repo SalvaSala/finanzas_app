@@ -168,6 +168,16 @@ Plantilla de movimiento + frecuencia (`daily`/`weekly`/`monthly`/`yearly`) + fec
 | current_amount | decimal | |
 | deadline | date (nullable) | |
 
+### `BalanceAdjustment` (Ajuste de saldo)
+Corrección manual del saldo disponible (efectivo contado a mano, saldo inicial mal puesto, descuadre). **No es un movimiento**, para no ensuciar los KPIs de ingresos/gastos ni los gráficos por categoría.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | int (PK) | |
+| date | date | Cuándo se hizo el ajuste (historial) |
+| amount | decimal | **Con signo**: positivo suma, negativo resta |
+| note | str (nullable) | P. ej. «Efectivo en la cartera» |
+
 ### `CategorizationRule` (Regla de autocategorización)
 Si el `concept` contiene cierto texto → asignar categoría/subcategoría automáticamente al introducir un movimiento.
 
@@ -197,6 +207,7 @@ Si el `concept` contiene cierto texto → asignar categoría/subcategoría autom
 - **Objetivos de ahorro**.
 - **Reglas de autocategorización**.
 - **Modo oscuro**, **informes PDF**, **copia de seguridad/restauración** de la BD.
+- **Saldo disponible** como KPI, con ajuste manual (ver 6.1).
 - Gráficos avanzados (treemap, heatmap de calendario, Sankey).
 
 ### Fase 4 — Nube
@@ -313,6 +324,11 @@ El reto de la Opción B es empaquetar un frontend web + backend Python como app 
 3. **Ventana de escritorio:** usar **pywebview** para abrir una ventana nativa que apunta al servidor local de FastAPI (en vez de un navegador).
 4. **Instalable:** empaquetar con **PyInstaller** (incluyendo `frontend/dist`) → `.exe`/instalador en Windows y **AppImage**/`.deb` en Linux.
 5. En el **primer arranque**, crear la base de datos y aplicar migraciones automáticamente.
+
+**Restaurar una copia también migra.** Una copia de seguridad puede venir de una versión
+anterior de la app, así que al restaurarla hay que aplicar las migraciones acto seguido, no
+esperar al siguiente arranque: si no, la BD se queda con el esquema viejo y todo endpoint que
+necesite una tabla nueva devuelve un 500 con la app ya abierta.
 
 **Dependencias de la ventana según plataforma.** pywebview usa un motor distinto en
 cada sistema: en **Windows**, EdgeChromium (ya presente en el SO); en **Linux**,
