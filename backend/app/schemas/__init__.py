@@ -1,6 +1,12 @@
 """Pydantic DTOs for API input/output."""
 
 from app.schemas.account import AccountRead
+from app.schemas.balance import (
+    BalanceAdjustmentCreate,
+    BalanceAdjustmentRead,
+    BalanceSet,
+    BalanceStatus,
+)
 from app.schemas.budget import BudgetCreate, BudgetProgress, BudgetRead, BudgetUpdate
 from app.schemas.category import CategoryCreate, CategoryDeleteInfo, CategoryRead, CategoryUpdate
 from app.schemas.csv import (
@@ -39,7 +45,11 @@ from app.schemas.transaction import (
 
 __all__ = [
     "AccountRead",
+    "BalanceAdjustmentCreate",
+    "BalanceAdjustmentRead",
     "BalancePoint",
+    "BalanceSet",
+    "BalanceStatus",
     "BudgetCreate",
     "BudgetProgress",
     "BudgetRead",

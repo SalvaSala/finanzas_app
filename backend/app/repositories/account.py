@@ -1,5 +1,8 @@
 """Data access for accounts."""
 
+from decimal import Decimal
+
+from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.models import Account
@@ -24,3 +27,13 @@ def add_all(session: Session, accounts: list[Account]) -> None:
     """Persist several accounts in a single transaction."""
     session.add_all(accounts)
     session.commit()
+
+
+def total_initial_balance(session: Session) -> Decimal:
+    """Sum of the initial balance of every non-archived account (0 when none)."""
+    result = session.exec(
+        select(func.coalesce(func.sum(Account.initial_balance), 0)).where(
+            col(Account.archived).is_(False)
+        )
+    ).one()
+    return Decimal(str(result))

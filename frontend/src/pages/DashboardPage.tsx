@@ -4,9 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import { useDashboard, useDashboardMonthly } from "@/hooks/useDashboard";
+import { useBalance } from "@/hooks/useBalance";
 
 import { PeriodSelector } from "@/components/dashboard/PeriodSelector";
 import { KpiCard } from "@/components/dashboard/KpiCard";
+import { BalanceKpiCard } from "@/components/dashboard/BalanceKpiCard";
 import { ExpenseDonut } from "@/components/dashboard/ExpenseDonut";
 import { CategoryAveragesTable } from "@/components/dashboard/CategoryAveragesTable";
 import { TopCategoriesChart } from "@/components/dashboard/TopCategoriesChart";
@@ -22,8 +24,8 @@ function DashboardSkeleton() {
   return (
     <>
       {/* KPI cards */}
-      <div className="grid grid-cols-3 gap-4">
-        {[0, 1, 2].map((i) => (
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
           <div key={i} className="space-y-3 rounded-xl border bg-card p-5">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-8 w-32" />
@@ -71,6 +73,8 @@ export function DashboardPage() {
 
   const { data: summary, isLoading } = useDashboard(year, month);
   const { data: monthly = [] } = useDashboardMonthly(year);
+  // The balance is "right now", so it ignores the period selector.
+  const { data: balance } = useBalance();
 
   const { data: expenseAverages } = useQuery({
     queryKey: ["dashboard", "category-averages", "expense", year, month],
@@ -119,7 +123,8 @@ export function DashboardPage() {
       ) : (
         <>
           {/* KPI cards */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <BalanceKpiCard status={balance} />
             <KpiCard title="Ingresos" amount={summary.income} variant="income" change={summary.income_change} />
             <KpiCard title="Gastos" amount={summary.expense} variant="expense" change={summary.expense_change} />
             <KpiCard title="Balance" amount={summary.balance} variant="balance" change={summary.balance_change} />

@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from app.api import (
     accounts,
     backup,
+    balance,
     budgets,
     categories,
     categorization_rules,
@@ -25,6 +26,7 @@ api_router.include_router(accounts.router)
 api_router.include_router(categories.router)
 api_router.include_router(transactions.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(balance.router)
 api_router.include_router(budgets.router)
 api_router.include_router(recurring.router)
 api_router.include_router(tags.router)

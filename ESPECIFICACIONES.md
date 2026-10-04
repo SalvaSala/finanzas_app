@@ -211,11 +211,31 @@ Si el `concept` contiene cierto texto → asignar categoría/subcategoría autom
 
 Selector global de periodo en la cabecera: **Año en curso** / **Mes en curso** (afecta a todos los widgets).
 
-**A) Fila de KPIs** (3 tarjetas):
+**A) Fila de KPIs** (4 tarjetas):
+- **Saldo** disponible **ahora mismo** (no depende del selector de periodo), color según signo.
 - **Ingresos** acumulados del periodo (verde).
 - **Gastos** acumulados del periodo (rojo).
 - **Balance** (ingresos − gastos), color según signo.
-- Cada tarjeta muestra opcionalmente la **variación %** respecto al periodo anterior.
+- Las tres últimas muestran opcionalmente la **variación %** respecto al periodo anterior.
+
+**Saldo disponible.** Responde a «cuánto puedo gastar hoy»:
+
+```
+liquidado = saldo inicial de las cuentas activas
+          + neto de los movimientos con fecha de hoy o anterior
+          + ajustes manuales
+saldo     = liquidado − gastos con fecha futura
+```
+
+- Un **gasto a futuro descuenta del saldo en cuanto se registra** (el dinero está
+  comprometido), pero **no cuenta como gasto del periodo** hasta que llega su fecha: los
+  KPIs de Ingresos/Gastos siguen viendo solo lo devengado.
+- Un **ingreso a futuro no suma** hasta su fecha: el saldo nunca muestra dinero que no ha
+  llegado. Las **transferencias** no lo mueven (netean a cero).
+- **Ajuste manual:** desde la propia tarjeta se escribe el saldo real (p. ej. al contar el
+  efectivo) y el backend guarda la diferencia como un **ajuste** (`balance_adjustments`),
+  no como un movimiento, para no ensuciar los KPIs ni los gráficos por categoría. El
+  diálogo lista los ajustes anteriores y permite borrarlos.
 
 **B) Sección de gráficos:**
 - **Donut de gastos por categoría**, con *drill-down* a **subcategoría** al hacer clic en un segmento (total en el centro).

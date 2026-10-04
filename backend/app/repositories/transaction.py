@@ -311,3 +311,33 @@ def cumulative_net_before(session: Session, before_date: dt.date) -> Decimal:
         )
     ).one()
     return Decimal(str(result))
+
+
+def net_up_to(session: Session, on_date: dt.date) -> Decimal:
+    """Net (income − expense) for everything dated on or before ``on_date``.
+
+    This is the part of the balance that has actually happened. Transfers are
+    excluded: they move money between accounts, so they net to zero globally.
+    """
+    result = session.exec(
+        select(func.coalesce(func.sum(_net_expr()), 0)).where(
+            col(Transaction.type).in_([TransactionType.income, TransactionType.expense]),
+            col(Transaction.date) <= on_date,
+        )
+    ).one()
+    return Decimal(str(result))
+
+
+def total_expense_after(session: Session, on_date: dt.date) -> Decimal:
+    """Sum of expenses dated strictly after ``on_date`` (money already committed).
+
+    Future expenses are subtracted from the available balance even though they
+    have not been spent yet, so the balance shows what can still be used.
+    """
+    result = session.exec(
+        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            col(Transaction.type) == TransactionType.expense,
+            col(Transaction.date) > on_date,
+        )
+    ).one()
+    return Decimal(str(result))

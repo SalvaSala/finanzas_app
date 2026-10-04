@@ -39,6 +39,10 @@ export type DayAmount = components["schemas"]["DayAmount"];
 export type SankeyData = components["schemas"]["SankeyData"];
 export type BalancePoint = components["schemas"]["BalancePoint"];
 export type CategoryAvgRow = components["schemas"]["CategoryAvgRow"];
+export type BalanceStatus = components["schemas"]["BalanceStatus"];
+export type BalanceSet = components["schemas"]["BalanceSet"];
+export type BalanceAdjustmentRead = components["schemas"]["BalanceAdjustmentRead"];
+export type BalanceAdjustmentCreate = components["schemas"]["BalanceAdjustmentCreate"];
 
 export type ListTransactionsQuery = NonNullable<
   paths["/api/transactions"]["get"]["parameters"]["query"]
@@ -260,6 +264,25 @@ export const api = {
       if (month != null) qs.set("month", String(month));
       if (parentId != null) qs.set("parent_id", String(parentId));
       return apiFetch<CategoryAvgRow[]>(`/api/dashboard/category-averages?${qs}`);
+    },
+  },
+
+  balance: {
+    status: () => apiFetch<BalanceStatus>("/api/balance"),
+    setAvailable: (data: BalanceSet) =>
+      apiFetch<BalanceStatus>("/api/balance", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    adjustments: {
+      list: () => apiFetch<BalanceAdjustmentRead[]>("/api/balance/adjustments"),
+      create: (data: BalanceAdjustmentCreate) =>
+        apiFetch<BalanceAdjustmentRead>("/api/balance/adjustments", {
+          method: "POST",
+          body: JSON.stringify(data),
+        }),
+      delete: (id: number) =>
+        apiFetch<void>(`/api/balance/adjustments/${id}`, { method: "DELETE" }),
     },
   },
 

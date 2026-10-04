@@ -197,3 +197,27 @@ def test_csv_import_mapped_endpoint_skips_duplicates(client: TestClient, session
     assert second.json()["imported"] == 0
     assert second.json()["duplicates"] == 5
     assert len(client.get("/api/transactions").json()) == 5
+
+
+def test_balance_endpoint_and_manual_adjustment(client: TestClient, session: Session) -> None:
+    account = Account(name="Caja", type=AccountType.cash, initial_balance=Decimal("500.00"))
+    session.add(account)
+    session.commit()
+
+    status = client.get("/api/balance")
+    assert status.status_code == 200, status.text
+    assert status.json()["available"] == "500.00"
+
+    created = client.post("/api/balance/adjustments", json={"amount": "25.50", "note": "Efectivo"})
+    assert created.status_code == 201, created.text
+
+    assert client.get("/api/balance").json()["available"] == "525.50"
+    assert len(client.get("/api/balance/adjustments").json()) == 1
+
+    deleted = client.delete(f"/api/balance/adjustments/{created.json()['id']}")
+    assert deleted.status_code == 204
+    assert client.get("/api/balance").json()["available"] == "500.00"
+
+
+def test_balance_adjustment_delete_unknown_returns_404(client: TestClient) -> None:
+    assert client.delete("/api/balance/adjustments/999").status_code == 404

@@ -207,6 +207,7 @@ function StepNative({ file, onBack, onImport }: StepNativeProps) {
       if (result.imported > 0) {
         qc.invalidateQueries({ queryKey: ["transactions"] });
         qc.invalidateQueries({ queryKey: ["dashboard"] });
+        qc.invalidateQueries({ queryKey: ["balance"] });
         qc.invalidateQueries({ queryKey: ["budgets"] });
       }
       // El importador propio no lleva ninguna de las dos cuentas: el CSV trae sus
@@ -521,6 +522,7 @@ function StepReview({ file, plan, onBack, onImport }: Step3Props) {
       if (result.imported > 0) {
         qc.invalidateQueries({ queryKey: ["transactions"] });
         qc.invalidateQueries({ queryKey: ["dashboard"] });
+        qc.invalidateQueries({ queryKey: ["balance"] });
         qc.invalidateQueries({ queryKey: ["budgets"] });
       }
       onImport(result);

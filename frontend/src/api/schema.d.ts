@@ -417,6 +417,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Balance */
+        get: operations["get_balance_api_balance_get"];
+        /**
+         * Set Balance
+         * @description Set the available balance; the difference is stored as an adjustment.
+         */
+        put: operations["set_balance_api_balance_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/balance/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Adjustments */
+        get: operations["list_adjustments_api_balance_adjustments_get"];
+        put?: never;
+        /** Create Adjustment */
+        post: operations["create_adjustment_api_balance_adjustments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/balance/adjustments/{adjustment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Adjustment */
+        delete: operations["delete_adjustment_api_balance_adjustments__adjustment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/budgets": {
         parameters: {
             query?: never;
@@ -746,6 +802,37 @@ export interface components {
          */
         AccountType: "cash" | "bank" | "card" | "savings";
         /**
+         * BalanceAdjustmentCreate
+         * @description A signed correction to the balance: positive adds, negative subtracts.
+         */
+        BalanceAdjustmentCreate: {
+            /** Amount */
+            amount: number | string;
+            /** Note */
+            note?: string | null;
+            /** Date */
+            date?: string | null;
+        };
+        /** BalanceAdjustmentRead */
+        BalanceAdjustmentRead: {
+            /** Id */
+            id: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Amount */
+            amount: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
          * BalancePoint
          * @description Single point in the balance history chart.
          */
@@ -754,6 +841,37 @@ export interface components {
             date: string;
             /** Balance */
             balance: number;
+        };
+        /**
+         * BalanceSet
+         * @description Target available balance; the service stores the difference as an adjustment.
+         */
+        BalanceSet: {
+            /** Available */
+            available: number | string;
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * BalanceStatus
+         * @description The available balance right now, with the parts it is built from.
+         */
+        BalanceStatus: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Available */
+            available: string;
+            /** Settled */
+            settled: string;
+            /** Committed Expense */
+            committed_expense: string;
+            /** Accounts Initial */
+            accounts_initial: string;
+            /** Adjustments Total */
+            adjustments_total: string;
         };
         /** Body_csv_import_mapped_api_transactions_csv_import_mapped_post */
         Body_csv_import_mapped_api_transactions_csv_import_mapped_post: {
@@ -2495,6 +2613,141 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CategoryAmount"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_balance_api_balance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceStatus"];
+                };
+            };
+        };
+    };
+    set_balance_api_balance_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BalanceSet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_adjustments_api_balance_adjustments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceAdjustmentRead"][];
+                };
+            };
+        };
+    };
+    create_adjustment_api_balance_adjustments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BalanceAdjustmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceAdjustmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_adjustment_api_balance_adjustments__adjustment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adjustment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
