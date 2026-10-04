@@ -201,8 +201,34 @@ function BalanceDialog({
 
 // ── KPI card ──────────────────────────────────────────────────────────────────
 
-export function BalanceKpiCard({ status }: { status: BalanceStatus | undefined }) {
+export function BalanceKpiCard({
+  status,
+  isError = false,
+}: {
+  status: BalanceStatus | undefined;
+  /** The balance could not be loaded: say so instead of waiting forever. */
+  isError?: boolean;
+}) {
   const [open, setOpen] = useState(false);
+
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardDescription className="flex items-center gap-1.5 text-xs uppercase tracking-wide">
+            <Wallet className="h-3.5 w-3.5" />
+            Saldo
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm font-medium text-destructive">No se pudo calcular el saldo</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Revisa que la base de datos esté al día.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!status) {
     return (

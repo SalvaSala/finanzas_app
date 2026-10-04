@@ -42,7 +42,12 @@ def delete_database() -> None:
 
 
 def restore_backup(data: bytes) -> None:
-    """Validate *data* as a SQLite database and restore it, replacing the current DB."""
+    """Validate *data* as a SQLite database and restore it, replacing the current DB.
+
+    A backup can come from an older version of the app, so migrations are applied
+    right after copying it: otherwise the restored database keeps the old schema
+    until the next startup and every endpoint that needs a newer table fails.
+    """
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         f.write(data)
         tmp = Path(f.name)
@@ -63,6 +68,10 @@ def restore_backup(data: bytes) -> None:
         src.backup(dst)
         src.close()
         dst.close()
+
+        from app.core.db import run_migrations
+
+        run_migrations()
     except ValidationError:
         raise
     except Exception as exc:

@@ -25,6 +25,20 @@ def _make_db(path: Path) -> None:
     conn.close()
 
 
+@pytest.fixture(name="migrations", autouse=True)
+def migrations_fixture(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
+    """Record calls to ``run_migrations`` instead of running them.
+
+    Both ``restore_backup`` and ``delete_database`` apply migrations, and the
+    real runner reads the database URL from the settings, not from the engine
+    patched below: without this double the tests would migrate the actual dev
+    database.
+    """
+    calls: list[bool] = []
+    monkeypatch.setattr("app.core.db.run_migrations", lambda: calls.append(True))
+    return calls
+
+
 @pytest.fixture(name="db_path")
 def db_path_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A temporary SQLite file wired into the backup service as its engine."""
@@ -81,6 +95,27 @@ def test_restore_backup_replaces_current_database(db_path: Path, tmp_path: Path)
         conn.close()
 
 
+def test_restore_backup_applies_migrations(
+    db_path: Path, tmp_path: Path, migrations: list[bool]
+) -> None:
+    """A backup from an older version must be brought up to the current schema."""
+    source = tmp_path / "source.db"
+    _make_db(source)
+
+    service.restore_backup(source.read_bytes())
+
+    assert migrations == [True]
+
+
+def test_restore_backup_does_not_migrate_a_rejected_file(
+    db_path: Path, migrations: list[bool]
+) -> None:
+    with pytest.raises(ValidationError):
+        service.restore_backup(b"esto no es una base de datos")
+
+    assert migrations == []
+
+
 def test_restore_backup_rejects_garbage(db_path: Path) -> None:
     with pytest.raises(ValidationError):
         service.restore_backup(b"esto no es una base de datos")
@@ -105,17 +140,9 @@ def test_restore_backup_rejects_truncated_database(db_path: Path, tmp_path: Path
 
 
 def test_delete_database_removes_file_and_runs_migrations(
-    db_path: Path, monkeypatch: pytest.MonkeyPatch
+    db_path: Path, migrations: list[bool]
 ) -> None:
-    calls: list[bool] = []
-
-    def fake_run_migrations() -> None:
-        calls.append(True)
-
-    # `delete_database` importa `run_migrations` dentro de la función.
-    monkeypatch.setattr("app.core.db.run_migrations", fake_run_migrations)
-
     service.delete_database()
 
     assert not db_path.exists()
-    assert calls == [True]
+    assert migrations == [True]

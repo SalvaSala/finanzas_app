@@ -55,6 +55,13 @@ describe("BalanceKpiCard — importe", () => {
     expect(screen.getByText("Disponible ahora mismo")).toBeInTheDocument();
   });
 
+  it("avisa cuando el saldo no se pudo cargar", () => {
+    render(<BalanceKpiCard status={undefined} isError />);
+
+    expect(screen.getByText("No se pudo calcular el saldo")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Ajustar saldo")).not.toBeInTheDocument();
+  });
+
   it("muestra un esqueleto mientras no hay datos", () => {
     render(<BalanceKpiCard status={undefined} />);
 

@@ -74,7 +74,7 @@ export function DashboardPage() {
   const { data: summary, isLoading } = useDashboard(year, month);
   const { data: monthly = [] } = useDashboardMonthly(year);
   // The balance is "right now", so it ignores the period selector.
-  const { data: balance } = useBalance();
+  const { data: balance, isError: balanceFailed } = useBalance();
 
   const { data: expenseAverages } = useQuery({
     queryKey: ["dashboard", "category-averages", "expense", year, month],
@@ -124,7 +124,7 @@ export function DashboardPage() {
         <>
           {/* KPI cards */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <BalanceKpiCard status={balance} />
+            <BalanceKpiCard status={balance} isError={balanceFailed} />
             <KpiCard title="Ingresos" amount={summary.income} variant="income" change={summary.income_change} />
             <KpiCard title="Gastos" amount={summary.expense} variant="expense" change={summary.expense_change} />
             <KpiCard title="Balance" amount={summary.balance} variant="balance" change={summary.balance_change} />
